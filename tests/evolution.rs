@@ -145,6 +145,7 @@ fn saved_state(experience: u32, feed_total: u32, last_updated_at: u64) -> GameSt
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
     }
 }
 

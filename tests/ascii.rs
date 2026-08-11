@@ -1,5 +1,5 @@
 use bitpet::ascii::monsters::art_by_id;
-use bitpet::ascii::pets::pet_art;
+use bitpet::ascii::pets::{pet_art, EGG_PET};
 use bitpet::domain::evolution::GrowthStage;
 use bitpet::domain::monster::SpeciesId;
 use bitpet::domain::Pet;
@@ -21,4 +21,11 @@ fn pet_art_uses_species_id() {
     pet.species_id = SpeciesId::Mofflet;
 
     assert_eq!(pet_art(&pet), art_by_id("mofflet").unwrap().art);
+}
+
+#[test]
+fn egg_art_does_not_use_species_lookup() {
+    let pet = Pet::default();
+
+    assert_eq!(pet_art(&pet), EGG_PET);
 }

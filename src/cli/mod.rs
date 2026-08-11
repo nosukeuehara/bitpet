@@ -38,6 +38,7 @@ where
                 renderer::render_action_limit_reached(action)
             }
             Err(ApplicationError::PetAway) => renderer::render_pet_away(),
+            Err(ApplicationError::PetNotHatched) => renderer::render_pet_not_hatched(),
             Err(error) => return Err(error.into()),
         },
         Command::Play => match service.play() {
@@ -46,11 +47,13 @@ where
                 renderer::render_action_limit_reached(action)
             }
             Err(ApplicationError::PetAway) => renderer::render_pet_away(),
+            Err(ApplicationError::PetNotHatched) => renderer::render_pet_not_hatched(),
             Err(error) => return Err(error.into()),
         },
         Command::Go => match service.start_expedition() {
             Ok(outcome) => renderer::render_expedition_started(&outcome),
             Err(ApplicationError::ExpeditionLocked) => renderer::render_expedition_locked(),
+            Err(ApplicationError::PetNotHatched) => renderer::render_pet_not_hatched(),
             Err(ApplicationError::PetAway) => renderer::render_pet_away(),
             Err(error) => return Err(error.into()),
         },

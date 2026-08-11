@@ -37,6 +37,10 @@ impl Pet {
     }
 
     pub fn update_growth(&mut self, care_stats: CareStats) {
+        if self.stage == GrowthStage::Egg {
+            return;
+        }
+
         self.level = level_from_experience(self.experience);
 
         if self.level >= 2 && self.stage == GrowthStage::Baby {
@@ -53,11 +57,31 @@ impl Pet {
     }
 
     pub fn family(&self) -> Option<MonsterFamily> {
+        if self.stage == GrowthStage::Egg {
+            return None;
+        }
+
         definition(self.species_id).map(|monster| monster.family)
     }
 
     pub fn species_name(&self) -> &'static str {
+        if self.stage == GrowthStage::Egg {
+            return "Egg";
+        }
+
         self.species_id.display_name()
+    }
+
+    pub fn is_egg(&self) -> bool {
+        self.stage == GrowthStage::Egg
+    }
+
+    pub fn hatch(&mut self) {
+        if self.stage == GrowthStage::Egg {
+            self.stage = GrowthStage::Baby;
+            self.species_id = SpeciesId::Baby;
+            self.level = self.level.max(1);
+        }
     }
 
     fn evolve(&mut self, care_stats: CareStats) {
@@ -73,7 +97,7 @@ impl Default for Pet {
     fn default() -> Self {
         Self {
             name: "Mochi".to_string(),
-            stage: GrowthStage::Baby,
+            stage: GrowthStage::Egg,
             species_id: SpeciesId::Baby,
             level: 1,
             experience: 0,

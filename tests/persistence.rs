@@ -1,6 +1,8 @@
 use bitpet::application::{ApplicationError, GameService};
 use bitpet::domain::evolution::GrowthStage;
-use bitpet::domain::monster::SpeciesId;
+use bitpet::domain::expedition::ExpeditionType;
+use bitpet::domain::monster::{MonsterFamily, SpeciesId};
+use bitpet::domain::report::ReportEventKind;
 use bitpet::domain::{
     CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
 };
@@ -11,6 +13,9 @@ use bitpet::infrastructure::storage::{
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+const SAVE_V0_1_0: &str = include_str!("fixtures/save_v0_1_0.json");
+const SAVE_V0_1_1: &str = include_str!("fixtures/save_v0_1_1.json");
 
 #[test]
 fn creates_new_game_when_save_data_does_not_exist() {
@@ -41,14 +46,17 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 7"#));
+    assert!(contents.contains(r#""version": 8"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""daily_actions""#));
     assert!(contents.contains(r#""care_stats""#));
     assert!(contents.contains(r#""daily_report""#));
     assert!(contents.contains(r#""login""#));
     assert!(contents.contains(r#""expedition": null"#));
-    assert!(contents.contains(r#""stage": "Baby""#));
+    assert!(contents.contains(r#""hatching""#));
+    assert!(contents.contains(r#""egg_created_at": 0"#));
+    assert!(contents.contains(r#""hatches_at": 3600"#));
+    assert!(contents.contains(r#""stage": "Egg""#));
     assert!(contents.contains(r#""species_id": "baby""#));
     assert!(!contents.contains(r#""evolution""#));
     assert!(contents.contains(r#""name": "Mochi""#));
@@ -69,6 +77,7 @@ fn loads_saved_game() {
         daily_report: DailyReport::new(0),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -92,6 +101,7 @@ fn save_then_load_keeps_pet_main_state() {
         daily_report: DailyReport::new(0),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -119,6 +129,7 @@ fn species_id_survives_save_load_roundtrip() {
         daily_report: DailyReport::new(0),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
     };
     state.pet.stage = GrowthStage::Final;
     state.pet.species_id = SpeciesId::Starwing;
@@ -137,12 +148,66 @@ fn wasm_compatible_json_roundtrip_preserves_species_id() {
     let mut state = GameState::default();
     state.pet.stage = GrowthStage::Stage2;
     state.pet.species_id = SpeciesId::Fuzzard;
+    state.hatching = None;
 
     let json = state_to_json(&state).expect("state should serialize");
     let loaded = state_from_json(&json).expect("state should deserialize");
 
     assert_eq!(loaded.pet.stage, GrowthStage::Stage2);
     assert_eq!(loaded.pet.species_id, SpeciesId::Fuzzard);
+}
+
+#[test]
+fn migrates_v0_1_x_fixtures_to_v0_2_0_and_roundtrips() {
+    assert_v0_1_fixture_migrates("v0_1_0", SAVE_V0_1_0);
+    assert_v0_1_fixture_migrates("v0_1_1", SAVE_V0_1_1);
+}
+
+#[test]
+fn legacy_report_without_event_history_reaches_migration() {
+    let state = state_from_json(
+        r#"{
+  "version": 5,
+  "last_updated_at": 9000,
+  "daily_actions": {
+    "day": 0,
+    "feed_count": 1,
+    "play_count": 1
+  },
+  "care_stats": {
+    "feed_total": 1,
+    "play_total": 1
+  },
+  "daily_report": {
+    "day": 0,
+    "feed_count": 1,
+    "play_count": 1,
+    "adventure_count": 0,
+    "experience_gained": 5,
+    "mood_delta": 15
+  },
+  "login": {
+    "last_login_day": 0,
+    "streak": 1
+  },
+  "pet": {
+    "name": "Mochi",
+    "stage": "Stage 1",
+    "evolution": "Weird",
+    "level": 2,
+    "experience": 10,
+    "hunger": 72,
+    "mood": 72,
+    "energy": 72
+  }
+}"#,
+    )
+    .expect("legacy save should deserialize before migration defaults are applied");
+
+    assert_eq!(state.version, 5);
+    assert_eq!(state.daily_report.feed_count, 1);
+    assert!(state.daily_report.events.is_empty());
+    assert_eq!(state.pet.species_id, SpeciesId::Wormlet);
 }
 
 #[test]
@@ -294,6 +359,7 @@ fn migrates_legacy_fluffy_evolution_to_mofflet_species() {
     assert_eq!(state.version, SAVE_VERSION);
     assert_eq!(state.pet.stage, GrowthStage::Stage1);
     assert_eq!(state.pet.species_id, SpeciesId::Mofflet);
+    assert_eq!(state.pet.family(), Some(MonsterFamily::Fuzz));
 
     cleanup(save_dir);
 }
@@ -425,6 +491,79 @@ fn test_save_dir(test_name: &str) -> PathBuf {
         .expect("system time should be after unix epoch")
         .as_nanos();
     std::env::temp_dir().join(format!("bitpet-{test_name}-{unique}"))
+}
+
+fn assert_v0_1_fixture_migrates(test_name: &str, fixture: &str) {
+    let state = state_from_json(fixture).expect("v0.1.x fixture should load");
+
+    assert_eq!(state.version, 6);
+    assert_eq!(state.last_updated_at, 9_000);
+    assert_eq!(state.pet.name, "Mochi");
+    assert_eq!(state.pet.stage, GrowthStage::Stage1);
+    assert_eq!(state.pet.species_id, SpeciesId::Mofflet);
+    assert_eq!(state.pet.level, 2);
+    assert_eq!(state.pet.experience, 15);
+    assert_eq!(state.pet.status.hunger, 82);
+    assert_eq!(state.pet.status.mood, 76);
+    assert_eq!(state.pet.status.energy, 58);
+    assert_eq!(state.daily_actions.feed_count, 2);
+    assert_eq!(state.daily_actions.play_count, 1);
+    assert_eq!(state.care_stats.feed_total, 5);
+    assert_eq!(state.care_stats.play_total, 3);
+    assert_eq!(state.daily_report.feed_count, 1);
+    assert_eq!(state.daily_report.play_count, 1);
+    assert_eq!(state.daily_report.adventure_count, 1);
+    assert_eq!(state.daily_report.experience_gained, 10);
+    assert_eq!(state.daily_report.mood_delta, 20);
+    assert_eq!(state.daily_report.events.len(), 4);
+    assert_eq!(
+        state.daily_report.events[3].kind,
+        ReportEventKind::ExpeditionStarted
+    );
+    assert_eq!(state.login.last_login_day, Some(0));
+    assert_eq!(state.login.streak, 4);
+    let expedition = state
+        .expedition
+        .as_ref()
+        .expect("expedition should migrate");
+    assert_eq!(expedition.expedition_type, ExpeditionType::Explore);
+    assert_eq!(expedition.started_at, 8_500);
+    assert_eq!(expedition.returns_at, 12_000);
+    assert_eq!(expedition.seed, 42);
+
+    let save_dir = test_save_dir(test_name);
+    fs::create_dir_all(&save_dir).expect("save directory should be created");
+    fs::write(save_dir.join("save.json"), fixture).expect("fixture save should be written");
+
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+    let migrated = service.status().expect("v0.1.x save should migrate");
+
+    assert_eq!(migrated.version, SAVE_VERSION);
+    assert_eq!(migrated.pet.species_id, SpeciesId::Mofflet);
+    assert_eq!(migrated.pet.family(), Some(MonsterFamily::Fuzz));
+    assert_eq!(migrated.daily_actions.feed_count, 2);
+    assert_eq!(migrated.daily_actions.play_count, 1);
+    assert_eq!(migrated.care_stats.feed_total, 5);
+    assert_eq!(migrated.care_stats.play_total, 3);
+    assert_eq!(migrated.daily_report.events.len(), 4);
+    assert_eq!(migrated.login.streak, 4);
+    assert!(migrated.expedition.is_some());
+
+    let saved_json =
+        fs::read_to_string(save_dir.join("save.json")).expect("migrated save should exist");
+    assert!(saved_json.contains(r#""version": 8"#));
+    assert!(saved_json.contains(r#""species_id": "mofflet""#));
+    assert!(!saved_json.contains(r#""evolution""#));
+
+    let roundtripped = FileRepository::new(save_dir.clone())
+        .load()
+        .expect("migrated save should roundtrip");
+    assert_eq!(roundtripped, migrated);
+
+    cleanup(save_dir);
 }
 
 fn write_legacy_stage1_save(save_dir: &PathBuf, evolution: &str) {

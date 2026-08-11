@@ -18,6 +18,7 @@ pub enum Action {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionError {
     DailyLimitReached(Action),
+    NotHatched,
     PetAway,
 }
 
@@ -72,10 +73,13 @@ impl DailyActions {
 }
 
 impl GameState {
-    pub fn feed(&mut self, timestamp: Timestamp) -> Result<(), ActionError> {
-        let day = crate::domain::time::day_index(timestamp);
+    pub fn feed(&mut self, timestamp: Timestamp, day: Timestamp) -> Result<(), ActionError> {
         self.daily_actions.reset_if_new_day(day);
         self.daily_report.reset_if_new_day(day);
+        if self.pet.is_egg() {
+            return Err(ActionError::NotHatched);
+        }
+
         if self.expedition.is_some() {
             return Err(ActionError::PetAway);
         }
@@ -99,10 +103,13 @@ impl GameState {
         Ok(())
     }
 
-    pub fn play(&mut self, timestamp: Timestamp) -> Result<(), ActionError> {
-        let day = crate::domain::time::day_index(timestamp);
+    pub fn play(&mut self, timestamp: Timestamp, day: Timestamp) -> Result<(), ActionError> {
         self.daily_actions.reset_if_new_day(day);
         self.daily_report.reset_if_new_day(day);
+        if self.pet.is_egg() {
+            return Err(ActionError::NotHatched);
+        }
+
         if self.expedition.is_some() {
             return Err(ActionError::PetAway);
         }

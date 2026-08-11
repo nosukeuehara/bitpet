@@ -4,7 +4,8 @@ use crate::domain::expedition::{Expedition, ExpeditionType};
 use crate::domain::monster::{legacy_evolution_species, species_from_str, SpeciesId};
 use crate::domain::report::{ReportEvent, ReportEventKind};
 use crate::domain::{
-    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, Timestamp, SAVE_VERSION,
+    CareStats, DailyActions, DailyReport, GameState, HatchingState, LoginState, Pet, Timestamp,
+    SAVE_VERSION,
 };
 use crate::infrastructure::filesystem;
 use serde::{Deserialize, Serialize};
@@ -121,26 +122,62 @@ fn storage_serde_error(error: serde_json::Error) -> ApplicationError {
 }
 
 pub fn state_from_json(contents: &str) -> ApplicationResult<GameState> {
-    let save: SaveData =
+    let raw: serde_json::Value =
         serde_json::from_str(contents).map_err(|_| ApplicationError::InvalidSaveData)?;
-    save.try_into()
+    let version = raw_save_version(&raw)?;
+
+    match version {
+        1..=7 => {
+            let save: LegacySaveData =
+                serde_json::from_value(raw).map_err(|_| ApplicationError::InvalidSaveData)?;
+            save.try_into()
+        }
+        SAVE_VERSION => {
+            let save: CurrentSaveData =
+                serde_json::from_value(raw).map_err(|_| ApplicationError::InvalidSaveData)?;
+            save.try_into()
+        }
+        _ => Err(ApplicationError::InvalidSaveData),
+    }
 }
 
 pub fn state_to_json(state: &GameState) -> ApplicationResult<String> {
-    let save = SaveData::from(state);
+    let save = CurrentSaveData::from(state);
     serde_json::to_string_pretty(&save).map_err(storage_serde_error)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SaveData {
+struct CurrentSaveData {
     version: u32,
-    last_updated_at: Option<Timestamp>,
-    daily_actions: Option<SaveDailyActions>,
-    care_stats: Option<SaveCareStats>,
-    daily_report: Option<SaveDailyReport>,
-    login: Option<SaveLoginState>,
+    last_updated_at: Timestamp,
+    daily_actions: SaveDailyActions,
+    care_stats: SaveCareStats,
+    daily_report: SaveDailyReport,
+    login: SaveLoginState,
+    #[serde(default)]
     expedition: Option<SaveExpedition>,
-    pet: SavePet,
+    hatching: Option<SaveHatchingState>,
+    pet: CurrentSavePet,
+}
+
+#[derive(Debug, Deserialize)]
+struct LegacySaveData {
+    version: u32,
+    #[serde(default)]
+    last_updated_at: Option<Timestamp>,
+    #[serde(default)]
+    daily_actions: Option<SaveDailyActions>,
+    #[serde(default)]
+    care_stats: Option<SaveCareStats>,
+    #[serde(default)]
+    daily_report: Option<LegacySaveDailyReport>,
+    #[serde(default)]
+    login: Option<LegacySaveLoginState>,
+    #[serde(default)]
+    expedition: Option<SaveExpedition>,
+    #[serde(default)]
+    hatching: Option<SaveHatchingState>,
+    pet: LegacySavePet,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -173,9 +210,35 @@ struct SaveReportEvent {
     kind: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct LegacySaveDailyReport {
+    #[serde(default)]
+    day: Timestamp,
+    #[serde(default)]
+    feed_count: u32,
+    #[serde(default)]
+    play_count: u32,
+    #[serde(default)]
+    adventure_count: u32,
+    #[serde(default)]
+    experience_gained: u32,
+    #[serde(default)]
+    mood_delta: i32,
+    #[serde(default)]
+    events: Vec<SaveReportEvent>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct SaveLoginState {
     last_login_day: Option<Timestamp>,
+    streak: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct LegacySaveLoginState {
+    #[serde(default)]
+    last_login_day: Option<Timestamp>,
+    #[serde(default)]
     streak: u32,
 }
 
@@ -188,11 +251,31 @@ struct SaveExpedition {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SavePet {
+struct SaveHatchingState {
+    egg_created_at: Timestamp,
+    hatches_at: Timestamp,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct CurrentSavePet {
     name: String,
+    stage: String,
+    species_id: String,
+    level: u32,
+    experience: u32,
+    hunger: u8,
+    mood: u8,
+    energy: u8,
+}
+
+#[derive(Debug, Deserialize)]
+struct LegacySavePet {
+    name: String,
+    #[serde(default)]
     stage: Option<String>,
+    #[serde(default)]
     species_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     evolution: Option<String>,
     level: u32,
     experience: u32,
@@ -201,21 +284,21 @@ struct SavePet {
     energy: u8,
 }
 
-impl From<&GameState> for SaveData {
+impl From<&GameState> for CurrentSaveData {
     fn from(state: &GameState) -> Self {
         Self {
             version: state.version,
-            last_updated_at: Some(state.last_updated_at),
-            daily_actions: Some(SaveDailyActions {
+            last_updated_at: state.last_updated_at,
+            daily_actions: SaveDailyActions {
                 day: state.daily_actions.day,
                 feed_count: state.daily_actions.feed_count,
                 play_count: state.daily_actions.play_count,
-            }),
-            care_stats: Some(SaveCareStats {
+            },
+            care_stats: SaveCareStats {
                 feed_total: state.care_stats.feed_total,
                 play_total: state.care_stats.play_total,
-            }),
-            daily_report: Some(SaveDailyReport {
+            },
+            daily_report: SaveDailyReport {
                 day: state.daily_report.day,
                 feed_count: state.daily_report.feed_count,
                 play_count: state.daily_report.play_count,
@@ -228,17 +311,17 @@ impl From<&GameState> for SaveData {
                     .iter()
                     .map(SaveReportEvent::from)
                     .collect(),
-            }),
-            login: Some(SaveLoginState {
+            },
+            login: SaveLoginState {
                 last_login_day: state.login.last_login_day,
                 streak: state.login.streak,
-            }),
+            },
             expedition: state.expedition.map(SaveExpedition::from),
-            pet: SavePet {
+            hatching: state.hatching.map(SaveHatchingState::from),
+            pet: CurrentSavePet {
                 name: state.pet.name.clone(),
-                stage: Some(state.pet.stage.as_str().to_string()),
-                species_id: Some(state.pet.species_id.as_str().to_string()),
-                evolution: None,
+                stage: state.pet.stage.as_str().to_string(),
+                species_id: state.pet.species_id.as_str().to_string(),
                 level: state.pet.level,
                 experience: state.pet.experience,
                 hunger: state.pet.status.hunger,
@@ -249,39 +332,60 @@ impl From<&GameState> for SaveData {
     }
 }
 
-impl TryFrom<SaveData> for GameState {
+impl TryFrom<CurrentSaveData> for GameState {
     type Error = ApplicationError;
 
-    fn try_from(save: SaveData) -> Result<Self, Self::Error> {
-        if !matches!(save.version, 1..=SAVE_VERSION) {
+    fn try_from(save: CurrentSaveData) -> Result<Self, Self::Error> {
+        if save.version != SAVE_VERSION {
             return Err(ApplicationError::InvalidSaveData);
         }
 
-        if save.version == SAVE_VERSION && save.last_updated_at.is_none() {
-            return Err(ApplicationError::InvalidSaveData);
-        }
+        let expedition = save.expedition.map(TryInto::try_into).transpose()?;
 
-        if save.version == SAVE_VERSION && save.daily_actions.is_none() {
-            return Err(ApplicationError::InvalidSaveData);
-        }
+        let stage = parse_growth_stage(Some(save.pet.stage.as_str()))?;
+        let hatching = parse_hatching(stage, save.hatching)?;
+        let species_id = species_from_str(save.pet.species_id.as_str())
+            .ok_or(ApplicationError::InvalidSaveData)?;
+        let mut pet = Pet::new(
+            save.pet.name,
+            save.pet.level,
+            save.pet.experience,
+            save.pet.hunger,
+            save.pet.mood,
+            save.pet.energy,
+        );
+        pet.stage = stage;
+        pet.species_id = species_id;
 
-        if save.version == SAVE_VERSION && save.care_stats.is_none() {
-            return Err(ApplicationError::InvalidSaveData);
-        }
+        Ok(Self {
+            version: save.version,
+            pet,
+            last_updated_at: save.last_updated_at,
+            daily_actions: DailyActions {
+                day: save.daily_actions.day,
+                feed_count: save.daily_actions.feed_count,
+                play_count: save.daily_actions.play_count,
+            },
+            care_stats: CareStats {
+                feed_total: save.care_stats.feed_total,
+                play_total: save.care_stats.play_total,
+            },
+            daily_report: save.daily_report.try_into()?,
+            login: LoginState {
+                last_login_day: save.login.last_login_day,
+                streak: save.login.streak,
+            },
+            expedition,
+            hatching,
+        })
+    }
+}
 
-        if save.version == SAVE_VERSION && save.daily_report.is_none() {
-            return Err(ApplicationError::InvalidSaveData);
-        }
+impl TryFrom<LegacySaveData> for GameState {
+    type Error = ApplicationError;
 
-        if save.version == SAVE_VERSION && save.login.is_none() {
-            return Err(ApplicationError::InvalidSaveData);
-        }
-
-        if save.version == SAVE_VERSION && save.pet.stage.is_none() {
-            return Err(ApplicationError::InvalidSaveData);
-        }
-
-        if save.version == SAVE_VERSION && save.pet.species_id.is_none() {
+    fn try_from(save: LegacySaveData) -> Result<Self, Self::Error> {
+        if !matches!(save.version, 1..=7) {
             return Err(ApplicationError::InvalidSaveData);
         }
 
@@ -315,6 +419,7 @@ impl TryFrom<SaveData> for GameState {
         let expedition = save.expedition.map(TryInto::try_into).transpose()?;
 
         let stage = parse_growth_stage(save.pet.stage.as_deref())?;
+        let hatching = parse_hatching(stage, save.hatching)?;
         let species_id = parse_species_id(
             save.pet.species_id.as_deref(),
             save.pet.evolution.as_deref(),
@@ -339,6 +444,7 @@ impl TryFrom<SaveData> for GameState {
             daily_report,
             login,
             expedition,
+            hatching,
         })
     }
 }
@@ -363,12 +469,6 @@ impl TryFrom<SaveDailyReport> for DailyReport {
     type Error = ApplicationError;
 
     fn try_from(report: SaveDailyReport) -> Result<Self, Self::Error> {
-        let events = report
-            .events
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<ApplicationResult<Vec<_>>>()?;
-
         Ok(Self {
             day: report.day,
             feed_count: report.feed_count,
@@ -376,7 +476,23 @@ impl TryFrom<SaveDailyReport> for DailyReport {
             adventure_count: report.adventure_count,
             experience_gained: report.experience_gained,
             mood_delta: report.mood_delta,
-            events,
+            events: parse_report_events(report.events)?,
+        })
+    }
+}
+
+impl TryFrom<LegacySaveDailyReport> for DailyReport {
+    type Error = ApplicationError;
+
+    fn try_from(report: LegacySaveDailyReport) -> Result<Self, Self::Error> {
+        Ok(Self {
+            day: report.day,
+            feed_count: report.feed_count,
+            play_count: report.play_count,
+            adventure_count: report.adventure_count,
+            experience_gained: report.experience_gained,
+            mood_delta: report.mood_delta,
+            events: parse_report_events(report.events)?,
         })
     }
 }
@@ -434,13 +550,50 @@ impl TryFrom<SaveExpedition> for Expedition {
     }
 }
 
+impl From<HatchingState> for SaveHatchingState {
+    fn from(hatching: HatchingState) -> Self {
+        Self {
+            egg_created_at: hatching.egg_created_at,
+            hatches_at: hatching.hatches_at,
+        }
+    }
+}
+
+impl TryFrom<SaveHatchingState> for HatchingState {
+    type Error = ApplicationError;
+
+    fn try_from(hatching: SaveHatchingState) -> Result<Self, Self::Error> {
+        if hatching.hatches_at < hatching.egg_created_at {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
+        Ok(Self {
+            egg_created_at: hatching.egg_created_at,
+            hatches_at: hatching.hatches_at,
+        })
+    }
+}
+
 fn parse_growth_stage(value: Option<&str>) -> ApplicationResult<GrowthStage> {
     match value {
+        Some("Egg") => Ok(GrowthStage::Egg),
         None | Some("Baby") => Ok(GrowthStage::Baby),
-        Some("Stage 1") => Ok(GrowthStage::Stage1),
-        Some("Stage 2") => Ok(GrowthStage::Stage2),
+        Some("Stage 1" | "Stage1") => Ok(GrowthStage::Stage1),
+        Some("Stage 2" | "Stage2") => Ok(GrowthStage::Stage2),
         Some("Final") => Ok(GrowthStage::Final),
         Some(_) => Err(ApplicationError::InvalidSaveData),
+    }
+}
+
+fn parse_hatching(
+    stage: GrowthStage,
+    hatching: Option<SaveHatchingState>,
+) -> ApplicationResult<Option<HatchingState>> {
+    match (stage, hatching) {
+        (GrowthStage::Egg, Some(hatching)) => Ok(Some(hatching.try_into()?)),
+        (GrowthStage::Egg, None) => Err(ApplicationError::InvalidSaveData),
+        (_, None) => Ok(None),
+        (_, Some(_)) => Err(ApplicationError::InvalidSaveData),
     }
 }
 
@@ -453,4 +606,19 @@ fn parse_species_id(
     }
 
     legacy_evolution_species(legacy_evolution).ok_or(ApplicationError::InvalidSaveData)
+}
+
+fn raw_save_version(raw: &serde_json::Value) -> ApplicationResult<u32> {
+    let Some(version) = raw.get("version").and_then(serde_json::Value::as_u64) else {
+        return Err(ApplicationError::InvalidSaveData);
+    };
+
+    u32::try_from(version).map_err(|_| ApplicationError::InvalidSaveData)
+}
+
+fn parse_report_events(events: Vec<SaveReportEvent>) -> ApplicationResult<Vec<ReportEvent>> {
+    events
+        .into_iter()
+        .map(TryInto::try_into)
+        .collect::<ApplicationResult<Vec<_>>>()
 }

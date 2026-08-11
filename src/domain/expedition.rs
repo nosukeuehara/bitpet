@@ -22,6 +22,7 @@ pub enum ExpeditionType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpeditionError {
     Locked,
+    NotHatched,
     AlreadyAway,
 }
 
@@ -51,8 +52,13 @@ impl GameState {
     pub fn start_expedition(
         &mut self,
         timestamp: Timestamp,
+        day: Timestamp,
         seed: u64,
     ) -> Result<ExpeditionOutcome, ExpeditionError> {
+        if self.pet.stage == GrowthStage::Egg {
+            return Err(ExpeditionError::NotHatched);
+        }
+
         if self.pet.stage == GrowthStage::Baby {
             return Err(ExpeditionError::Locked);
         }
@@ -61,7 +67,6 @@ impl GameState {
             return Err(ExpeditionError::AlreadyAway);
         }
 
-        let day = crate::domain::time::day_index(timestamp);
         self.daily_report.reset_if_new_day(day);
         self.pet.status.energy = self
             .pet

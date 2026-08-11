@@ -3,8 +3,22 @@ use crate::domain::action::{Action, ActionOutcome};
 use crate::domain::expedition::ExpeditionOutcome;
 use crate::domain::report::{ReportEvent, ReportEventKind};
 use crate::domain::{DailyReport, GameState, LoginState};
+use crate::infrastructure::clock::local_time_of_day;
 
 pub fn render_status(state: &GameState) -> String {
+    if state.pet.is_egg() {
+        let remaining = state
+            .hatching
+            .map(|hatching| hatching.hatches_at.saturating_sub(state.last_updated_at))
+            .unwrap_or(0);
+
+        return format!(
+            "{}\n\nEgg\n\nHatching in {}",
+            pet_art(&state.pet),
+            render_duration(remaining)
+        );
+    }
+
     if let Some(expedition) = state.expedition {
         return format!(
             "{}\n\n{} is exploring.\n\nReturns in:\n{}",
@@ -40,6 +54,10 @@ pub fn render_expedition_started(outcome: &ExpeditionOutcome) -> String {
 
 pub fn render_expedition_locked() -> String {
     "Mochi is not ready to explore yet.\n\nReach Stage 1 first.".to_string()
+}
+
+pub fn render_pet_not_hatched() -> String {
+    "The egg has not hatched yet.\n\nCheck back later.".to_string()
 }
 
 pub fn render_pet_away() -> String {
@@ -94,9 +112,7 @@ pub fn render_streak(login: &LoginState) -> String {
 }
 
 fn render_report_event(event: &ReportEvent) -> String {
-    let seconds_of_day = event.timestamp % 86_400;
-    let hour = seconds_of_day / 3_600;
-    let minute = seconds_of_day % 3_600 / 60;
+    let (hour, minute) = local_time_or_utc(event.timestamp);
     let message = match event.kind {
         ReportEventKind::Login => "Checked in",
         ReportEventKind::Feed => "Fed Mochi",
@@ -109,10 +125,18 @@ fn render_report_event(event: &ReportEvent) -> String {
 }
 
 fn render_time_of_day(timestamp: u64) -> String {
-    let seconds_of_day = timestamp % 86_400;
-    let hour = seconds_of_day / 3_600;
-    let minute = seconds_of_day % 3_600 / 60;
+    let (hour, minute) = local_time_or_utc(timestamp);
     format!("{hour:02}:{minute:02}")
+}
+
+fn local_time_or_utc(timestamp: u64) -> (u64, u64) {
+    local_time_of_day(timestamp).map_or_else(
+        || {
+            let seconds_of_day = timestamp % 86_400;
+            (seconds_of_day / 3_600, seconds_of_day % 3_600 / 60)
+        },
+        |(hour, minute)| (u64::from(hour), u64::from(minute)),
+    )
 }
 
 fn render_duration(seconds: u64) -> String {
@@ -129,17 +153,29 @@ fn render_duration(seconds: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::{render_expedition_started, render_report, render_status, render_streak};
+    use crate::domain::evolution::GrowthStage;
     use crate::domain::expedition::{Expedition, ExpeditionOutcome, ExpeditionType};
     use crate::domain::report::{DailyReport, LoginState};
     use crate::domain::GameState;
 
     #[test]
     fn renders_default_pet_status() {
-        let output = render_status(&GameState::default());
+        let mut state = GameState::default();
+        state.pet.hatch();
+        state.hatching = None;
+        let output = render_status(&state);
 
         assert!(output.contains("Mochi"));
         assert!(output.contains("Lv. 1"));
         assert!(output.contains("Hunger"));
+    }
+
+    #[test]
+    fn renders_egg_status() {
+        let output = render_status(&GameState::default());
+
+        assert!(output.contains("Egg"));
+        assert!(output.contains("Hatching in"));
     }
 
     #[test]
@@ -155,7 +191,7 @@ mod tests {
         assert!(output.contains("Play        1"));
         assert!(output.contains("EXP gained  5"));
         assert!(output.contains("Mood        +15"));
-        assert!(output.contains("01:00 Fed Mochi"));
+        assert!(output.contains("Fed Mochi"));
     }
 
     #[test]
@@ -172,6 +208,8 @@ mod tests {
     #[test]
     fn renders_away_status() {
         let mut state = GameState::new(3_600);
+        state.pet.stage = GrowthStage::Stage1;
+        state.hatching = None;
         state.expedition = Some(Expedition {
             expedition_type: ExpeditionType::Explore,
             started_at: 3_600,
@@ -196,6 +234,5 @@ mod tests {
 
         assert!(output.contains("Mochi went exploring."));
         assert!(output.contains("Expected return:"));
-        assert!(output.contains("02:00"));
     }
 }

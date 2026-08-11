@@ -62,7 +62,7 @@ fn pet_cannot_be_fed_or_played_with_while_away() {
     let mut repository = FileRepository::new(save_dir.clone());
     let mut state = saved_state(3_600, GrowthStage::Stage1);
     state
-        .start_expedition(3_600, 3_600)
+        .start_expedition(3_600, 0, 3_600)
         .expect("expedition should start");
     repository.save(&state).expect("game should be saved");
     let mut service = GameService::with_clock(
@@ -82,7 +82,7 @@ fn expedition_state_survives_save_and_load() {
     let mut repository = FileRepository::new(save_dir.clone());
     let mut state = saved_state(3_600, GrowthStage::Stage1);
     state
-        .start_expedition(3_600, 3_600)
+        .start_expedition(3_600, 0, 3_600)
         .expect("expedition should start");
 
     repository.save(&state).expect("game should be saved");
@@ -99,7 +99,7 @@ fn completed_expedition_applies_reward_and_clears_away_state() {
     let mut repository = FileRepository::new(save_dir.clone());
     let mut state = saved_state(3_600, GrowthStage::Stage1);
     state
-        .start_expedition(3_600, 3_600)
+        .start_expedition(3_600, 0, 3_600)
         .expect("expedition should start");
     repository.save(&state).expect("game should be saved");
     let mut service = GameService::with_clock(
@@ -125,7 +125,7 @@ fn saved_state(last_updated_at: u64, stage: GrowthStage) -> GameState {
     let mut pet = Pet::new("Mochi".to_string(), 1, 0, 72, 72, 72);
     pet.stage = stage;
     pet.species_id = match stage {
-        GrowthStage::Baby => SpeciesId::Baby,
+        GrowthStage::Egg | GrowthStage::Baby => SpeciesId::Baby,
         GrowthStage::Stage1 | GrowthStage::Stage2 | GrowthStage::Final => SpeciesId::Mofflet,
     };
 
@@ -138,6 +138,7 @@ fn saved_state(last_updated_at: u64, stage: GrowthStage) -> GameState {
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
     }
 }
 
