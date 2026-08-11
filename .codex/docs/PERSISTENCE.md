@@ -40,7 +40,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 6,
+  "version": 9,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
@@ -83,10 +83,12 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
     "returns_at": 1760003600,
     "seed": 1760000000
   },
+  "hatching": null,
+  "pending_evolution": null,
   "pet": {
     "name": "Mochi",
-    "stage": "Stage 1",
-    "evolution": "Fluffy",
+    "stage": "Stage 2",
+    "species_id": "fuzzard",
     "level": 3,
     "experience": 24,
     "hunger": 72,
@@ -127,6 +129,147 @@ Phase 6では、`version: 1` から `version: 4` の既存saveに `daily_report`
 `expedition` は外出中の状態を保存する。外出中でなければ `null` とする。
 
 Phase 7では、`version: 1` から `version: 5` の既存saveに `expedition` が存在しない場合、外出していない状態として補完して `version: 6` として保存し直す。
+
+`pet.species_id` はMonsterの安定した内部IDをsnake_caseで保存する。
+
+表示名やASCII Art文字列は保存しない。
+
+Phase 8では、`version: 1` から `version: 6` の既存saveに `pet.species_id` が存在しない場合、旧 `pet.evolution` を以下の決定的な対応で補完して `version: 7` として保存し直す。
+
+\`\`\`text
+Baby   -> baby
+Fluffy -> mofflet
+Sharp  -> spindle
+Weird  -> wormlet
+\`\`\`
+
+`pet.stage` は引き続き `"Baby"` / `"Stage 1"` / `"Stage 2"` / `"Final"` として保存する。
+
+`SpeciesId` と `MonsterFamily`、具体的なSpecies一覧は以下をsource of truthとする。
+
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
+
+v0.1.0 と v0.1.1 の保存schemaは同じ `version: 6` とする。
+
+v0.1.1 は配布workflow修正のみで、save.json の構造差分はない。
+
+読み込み時は、古いsaveを current schema へ直接deserializeしない。
+
+以下の順番を必須とする。
+
+\`\`\`text
+raw JSON
+↓
+version 判定
+↓
+version 1..=7: legacy save schema へdeserialize
+version 8: current-before-pending save schema へdeserialize
+version 9: current save schema へdeserialize
+↓
+GameState へ変換
+↓
+service layer migration / elapsed time / login / expedition completion
+↓
+current schema で保存
+\`\`\`
+
+`version: 1` から `version: 6` の legacy schema では、当時存在しないfieldをmigration用に決定的defaultで補完してよい。
+
+現在の補完ルール:
+
+\`\`\`text
+last_updated_at missing -> 0 として読み込み、version 1 はservice layerで現在時刻へ更新
+daily_actions missing  -> day 0 / feed_count 0 / play_count 0
+care_stats missing     -> feed_total 0 / play_total 0
+daily_report missing   -> DailyReport::new(0)
+daily_report.events missing -> []
+login missing          -> LoginState::new()
+login.streak missing   -> 0
+expedition missing     -> None
+hatching missing       -> version 1..=7 の非Egg saveでは None
+pending_evolution missing -> None
+pet.stage missing      -> Baby
+pet.species_id missing -> legacy pet.evolution から決定的に変換
+pet.evolution missing  -> Baby
+\`\`\`
+
+`version: 8` は pending evolution 追加前のcurrent schemaとして扱う。`last_updated_at` / `daily_actions` / `care_stats` / `daily_report` / `login` / `pet.stage` / `pet.species_id` を必須とし、`pending_evolution = None` を補完して `version: 9` へ保存する。`pet.stage: "Egg"` の場合のみ `hatching` も必須とする。
+
+`version: 9` はcurrent schemaとして扱う。`pending_evolution` は `null` または以下の形式で保存する。
+
+```json
+"pending_evolution": {
+  "from_stage": "Stage 1",
+  "from_species_id": "mofflet",
+  "to_stage": "Stage 2",
+  "to_species_id": "fuzzard"
+}
+```
+
+`pending_evolution` は、外出報酬などで進化条件を満たしたが、まだユーザーに進化演出を見せていない状態を表す。保存をまたいでも、`pet.stage` / `pet.species_id` は進化前の姿を保持する。次の pet-facing command でpendingを解決し、進化イベントを出してから新しい姿を保存する。
+
+未知の `version`、壊れたJSON、未知の `species_id`、未知の legacy `evolution`、不正な `expedition` は migration 不能として読み込みエラーを返す。
+
+migration不能なsaveを削除したり、新規ゲームとして上書きしてはいけない。
+
+Phase 9では、新規ゲームをEggから開始するため `version: 8` として `hatching` を追加する。
+
+```json
+"hatching": {
+  "egg_created_at": 1760000000,
+  "hatches_at": 1760003600
+}
+```
+
+Eggでは `pet.stage` を `"Egg"`、`pet.species_id` を `"baby"` として保存する。
+
+EggはSpeciesそのものではないため、`hatching` がEgg固有状態を保持し、孵化後は `hatching: null` かつ `pet.stage: "Baby"` へ移る。
+
+`hatching.hatches_at` は `egg_created_at + 3600` 秒とする。
+
+`version: 1` から `version: 7` の既存saveは、読み込み後に `hatching = None` として扱う。既存ユーザーをEggへ戻してはいけない。
+
+Phase 10では、行動中の進化確定表示を避けるため `version: 9` として `pending_evolution` を追加する。
+
+`version: 1` から `version: 8` の既存saveは、読み込み後に `pending_evolution = None` として扱う。既存ユーザーの進行状況やSpeciesをリセットしてはいけない。
+
+時刻の責務:
+
+```text
+Domain / Persistence:
+  UTC / Unix timestamp seconds
+  absolute duration calculation
+
+Application / Clock:
+  current Unix timestamp
+  local calendar day index
+
+CLI presentation:
+  user's local timezone for clock display
+```
+
+absolute timeとして扱うもの:
+
+```text
+last_updated_at
+egg_created_at
+hatches_at
+expedition.started_at
+expedition.returns_at
+daily_report event timestamp
+```
+
+local calendar dayとして扱うもの:
+
+```text
+daily_actions.day
+daily_report.day
+login.last_login_day
+```
+
+`+9 hours` のような固定timezone補正は禁止する。NativeではOSのlocal timezoneからlocal calendar dayを求める。Wasmでは呼び出し側がlocal offsetを渡せるAPIを使用できる。
 
 **---**
 

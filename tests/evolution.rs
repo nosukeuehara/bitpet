@@ -1,5 +1,6 @@
 use bitpet::application::GameService;
-use bitpet::domain::evolution::{EvolutionKind, GrowthStage};
+use bitpet::domain::evolution::GrowthStage;
+use bitpet::domain::monster::{definition, MonsterFamily, SpeciesId, MONSTER_CATALOG};
 use bitpet::domain::{
     CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
 };
@@ -10,8 +11,8 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
-fn play_can_level_up_and_evolve_to_sharp() {
-    let save_dir = test_save_dir("play_can_level_up_and_evolve_to_sharp");
+fn play_can_level_up_and_evolve_to_spindle() {
+    let save_dir = test_save_dir("play_can_level_up_and_evolve_to_spindle");
     let state = saved_state(5, 0, 3_600);
     let mut repository = FileRepository::new(save_dir.clone());
     repository.save(&state).expect("game should be saved");
@@ -25,47 +26,113 @@ fn play_can_level_up_and_evolve_to_sharp() {
         .load()
         .expect("updated game should load");
 
+    let evolution = outcome.evolution.expect("play should emit evolution event");
+    assert_eq!(evolution.from_species_id, SpeciesId::Baby);
+    assert_eq!(evolution.to_species_id, SpeciesId::Spindle);
     assert_eq!(outcome.state.pet.level, 2);
     assert_eq!(outcome.state.pet.stage, GrowthStage::Stage1);
-    assert_eq!(outcome.state.pet.evolution, EvolutionKind::Sharp);
-    assert_eq!(loaded.pet.evolution, EvolutionKind::Sharp);
+    assert_eq!(outcome.state.pet.species_id, SpeciesId::Spindle);
+    assert_eq!(loaded.pet.species_id, SpeciesId::Spindle);
 
     cleanup(save_dir);
 }
 
 #[test]
-fn feed_focused_pet_evolves_to_fluffy_after_level_threshold() {
-    let mut state = saved_state(10, 3, 3_600);
+fn baby_evolves_to_stage1_species_after_level_threshold() {
+    let mut state = saved_state(10, 1, 3_600);
 
     state.pet.update_growth(state.care_stats);
 
     assert_eq!(state.pet.level, 2);
     assert_eq!(state.pet.stage, GrowthStage::Stage1);
-    assert_eq!(state.pet.evolution, EvolutionKind::Fluffy);
+    assert_eq!(state.pet.species_id, SpeciesId::Mofflet);
 }
 
 #[test]
-fn balanced_care_evolves_to_weird_after_level_threshold() {
-    let mut state = saved_state(10, 2, 3_600);
+fn stage1_evolves_to_stage2_species_after_level_threshold() {
+    let mut state = saved_state(20, 1, 3_600);
+    state.pet.stage = GrowthStage::Stage1;
+    state.pet.species_id = SpeciesId::Mofflet;
+
+    state.pet.update_growth(state.care_stats);
+
+    assert_eq!(state.pet.level, 3);
+    assert_eq!(state.pet.stage, GrowthStage::Stage2);
+    assert_eq!(state.pet.species_id, SpeciesId::Fuzzard);
+}
+
+#[test]
+fn stage2_evolves_to_final_species_after_level_threshold() {
+    let mut state = saved_state(30, 4, 3_600);
     state.care_stats.play_total = 2;
+    state.pet.stage = GrowthStage::Stage2;
+    state.pet.species_id = SpeciesId::Fuzzard;
 
     state.pet.update_growth(state.care_stats);
 
-    assert_eq!(state.pet.level, 2);
-    assert_eq!(state.pet.stage, GrowthStage::Stage1);
-    assert_eq!(state.pet.evolution, EvolutionKind::Weird);
+    assert_eq!(state.pet.level, 4);
+    assert_eq!(state.pet.stage, GrowthStage::Final);
+    assert_eq!(state.pet.species_id, SpeciesId::Brumruff);
 }
 
 #[test]
-fn evolved_pet_does_not_change_evolution_on_later_growth_update() {
+fn family_selection_uses_care_totals() {
+    let cases = [
+        (3, 2, SpeciesId::Mofflet, MonsterFamily::Fuzz),
+        (4, 2, SpeciesId::Spriglet, MonsterFamily::Flora),
+        (2, 3, SpeciesId::Spindle, MonsterFamily::Spike),
+        (2, 4, SpeciesId::Flitter, MonsterFamily::Wing),
+        (3, 3, SpeciesId::Bloblet, MonsterFamily::Drift),
+        (2, 2, SpeciesId::Buddle, MonsterFamily::Colony),
+        (1, 1, SpeciesId::Wormlet, MonsterFamily::Oddling),
+    ];
+
+    for (feed_total, play_total, species_id, family) in cases {
+        let mut state = saved_state(10, feed_total, 3_600);
+        state.care_stats.play_total = play_total;
+
+        state.pet.update_growth(state.care_stats);
+
+        assert_eq!(state.pet.species_id, species_id);
+        assert_eq!(state.pet.family(), Some(family));
+    }
+}
+
+#[test]
+fn final_branch_selection_stays_within_family() {
+    let mut state = saved_state(30, 1, 3_600);
+    state.care_stats.play_total = 5;
+    state.pet.stage = GrowthStage::Stage2;
+    state.pet.species_id = SpeciesId::Pricklet;
+
+    state.pet.update_growth(state.care_stats);
+
+    assert_eq!(state.pet.stage, GrowthStage::Final);
+    assert_eq!(state.pet.species_id, SpeciesId::Starwing);
+    assert_eq!(state.pet.family(), Some(MonsterFamily::Spike));
+}
+
+#[test]
+fn catalog_contains_all_monster_definitions() {
+    assert_eq!(MONSTER_CATALOG.len(), 28);
+
+    let mofflet = definition(SpeciesId::Mofflet).expect("mofflet should exist");
+
+    assert_eq!(mofflet.display_name, "Mofflet");
+    assert_eq!(mofflet.family, MonsterFamily::Fuzz);
+    assert_eq!(mofflet.growth_stage, GrowthStage::Stage1);
+}
+
+#[test]
+fn final_pet_does_not_change_species_on_later_growth_update() {
     let mut state = saved_state(10, 0, 3_600);
-    state.care_stats.play_total = 2;
-    state.pet.update_growth(state.care_stats);
+    state.pet.stage = GrowthStage::Final;
+    state.pet.species_id = SpeciesId::Starwing;
     state.care_stats.feed_total = 10;
 
     state.pet.update_growth(state.care_stats);
 
-    assert_eq!(state.pet.evolution, EvolutionKind::Sharp);
+    assert_eq!(state.pet.species_id, SpeciesId::Starwing);
 }
 
 fn saved_state(experience: u32, feed_total: u32, last_updated_at: u64) -> GameState {
@@ -81,6 +148,8 @@ fn saved_state(experience: u32, feed_total: u32, last_updated_at: u64) -> GameSt
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
+        pending_evolution: None,
     }
 }
 

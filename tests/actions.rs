@@ -107,6 +107,27 @@ fn daily_counts_reset_on_next_day() {
     cleanup(save_dir);
 }
 
+#[test]
+fn daily_counts_reset_at_local_midnight() {
+    let save_dir = test_save_dir("daily_counts_reset_at_local_midnight");
+    let state = saved_state(60, 70, 50, 0, 3, 53_400);
+    let mut repository = FileRepository::new(save_dir.clone());
+    repository.save(&state).expect("game should be saved");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::with_local_day_offset(55_200, 9 * 3_600),
+    );
+
+    let outcome = service
+        .feed()
+        .expect("feed should be available after local midnight");
+
+    assert_eq!(outcome.state.daily_actions.day, 1);
+    assert_eq!(outcome.state.daily_actions.feed_count, 1);
+
+    cleanup(save_dir);
+}
+
 fn saved_state(
     hunger: u8,
     mood: u8,
@@ -131,6 +152,8 @@ fn saved_state(
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
+        pending_evolution: None,
     }
 }
 

@@ -1,0 +1,59 @@
+{
+  "version": 6,
+  "last_updated_at": 9000,
+  "daily_actions": {
+    "day": 0,
+    "feed_count": 2,
+    "play_count": 1
+  },
+  "care_stats": {
+    "feed_total": 5,
+    "play_total": 3
+  },
+  "daily_report": {
+    "day": 0,
+    "feed_count": 1,
+    "play_count": 1,
+    "adventure_count": 1,
+    "experience_gained": 10,
+    "mood_delta": 20,
+    "events": [
+      {
+        "timestamp": 8000,
+        "kind": "login"
+      },
+      {
+        "timestamp": 8100,
+        "kind": "feed"
+      },
+      {
+        "timestamp": 8200,
+        "kind": "play"
+      },
+      {
+        "timestamp": 8300,
+        "kind": "expedition_started"
+      }
+    ]
+  },
+  "login": {
+    "last_login_day": 0,
+    "streak": 4
+  },
+  "expedition": {
+    "expedition_type": "Explore",
+    "started_at": 8500,
+    "returns_at": 12000,
+    "seed": 42
+  },
+  "pet": {
+    "name": "Mochi",
+    "stage": "Stage 1",
+    "evolution": "Fluffy",
+    "level": 2,
+    "experience": 15,
+    "hunger": 82,
+    "mood": 76,
+    "energy": 58
+  }
+}

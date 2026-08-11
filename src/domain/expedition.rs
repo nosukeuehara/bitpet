@@ -1,5 +1,5 @@
 use crate::domain::evolution::GrowthStage;
-use crate::domain::{GameState, Timestamp};
+use crate::domain::{EvolutionEvent, GameState, Timestamp};
 
 pub const EXPEDITION_DURATION_SECONDS: Timestamp = 60 * 60;
 const EXPEDITION_ENERGY_COST: u8 = 10;
@@ -22,6 +22,7 @@ pub enum ExpeditionType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpeditionError {
     Locked,
+    NotHatched,
     AlreadyAway,
 }
 
@@ -30,6 +31,7 @@ pub struct ExpeditionOutcome {
     pub expedition_type: ExpeditionType,
     pub started_at: Timestamp,
     pub returns_at: Timestamp,
+    pub evolution: Option<EvolutionEvent>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,8 +53,13 @@ impl GameState {
     pub fn start_expedition(
         &mut self,
         timestamp: Timestamp,
+        day: Timestamp,
         seed: u64,
     ) -> Result<ExpeditionOutcome, ExpeditionError> {
+        if self.pet.stage == GrowthStage::Egg {
+            return Err(ExpeditionError::NotHatched);
+        }
+
         if self.pet.stage == GrowthStage::Baby {
             return Err(ExpeditionError::Locked);
         }
@@ -61,7 +68,6 @@ impl GameState {
             return Err(ExpeditionError::AlreadyAway);
         }
 
-        let day = crate::domain::time::day_index(timestamp);
         self.daily_report.reset_if_new_day(day);
         self.pet.status.energy = self
             .pet
@@ -82,6 +88,7 @@ impl GameState {
             expedition_type: expedition.expedition_type,
             started_at: expedition.started_at,
             returns_at: expedition.returns_at,
+            evolution: None,
         })
     }
 
@@ -102,7 +109,7 @@ impl GameState {
             .mood
             .saturating_add(EXPEDITION_MOOD_REWARD)
             .min(100);
-        self.pet.update_growth(self.care_stats);
+        self.queue_growth();
         self.daily_report.record_expedition_completed(
             timestamp,
             EXPEDITION_EXPERIENCE_REWARD,

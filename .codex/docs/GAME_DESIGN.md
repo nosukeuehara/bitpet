@@ -79,6 +79,20 @@ Baby（共通）
 
 ユーザーが「最初から当たり・外れ」を意識しすぎない設計にする。
 
+MVPの孵化条件:
+
+```text
+egg_created_at + 1 hour <= now
+```
+
+孵化判定は決定的に行う。
+
+再起動や再読み込みのたびに結果が変わるrandom hatchは禁止する。
+
+Egg中は `feed` / `play` / `go` を実行できない。
+
+孵化後は全ユーザー共通のBabyになり、Stage 1への進化時にFamily / Species分岐を開始する。
+
 **---**
 
 **# 7. ステータス**
@@ -178,6 +192,10 @@ const HUNGER\_DECAY\_PER\_HOUR: f32 = 3.0;
 **# 9. 日付処理**
 
 「日付」と「経過時間」を別概念として扱う。
+
+経過時間や帰還予定、孵化時刻はUnix timestampによる絶対時刻で扱う。
+
+日付変更判定はユーザーのlocal calendar dayで扱う。
 
 日付変更時には以下を更新する。
 
@@ -311,9 +329,17 @@ lazy +1
 
 **# 13. 進化ツリー**
 
-MVPでは分岐数を少なくする。
+v0.2.0以降は、進化ツリーの具体的なFamily / Species一覧を以下で管理する。
 
-例:
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
+
+GAME_DESIGN.mdでは、進化のゲームルールとライフサイクル上の位置づけを管理する。
+
+具体的なSpecies ID、表示名、Family、ASCII asset mapping、進化ツリー全体はMONSTER.mdをsource of truthとし、本書へ28体の一覧はコピーしない。
+
+Phase 5 MVPでは以下の簡易進化を使用していた。
 
 \`\`\`text
                   Baby
@@ -324,9 +350,9 @@ MVPでは分岐数を少なくする。
             ...  ...  ...
 \`\`\`
 
-最初の進化では3〜5種類程度。
+この `Fluffy` / `Sharp` / `Weird` は正式なSpeciesではなく、Stage 1の仮分類として扱う。
 
-後から追加できるデータ構造とする。
+v0.2.0のMonster Systemでは、孵化直後のBabyは共通のまま、Stage 1でFamilyとSpeciesを決定し、その後は基本的に同じFamily内でStage 2、Finalへ成長する。
 
 Phase 5 MVPでは以下を適用する。
 
@@ -337,20 +363,22 @@ level 2到達時:
   Baby -> Stage 1
 \`\`\`
 
-最初の進化先:
+v0.2.0では以下を適用する。
 
 \`\`\`text
-feed_total > play_total
-  Fluffy
+level 2到達時:
+  Baby -> Stage 1 species
 
-play_total > feed_total
-  Sharp
+level 3到達時:
+  Stage 1 species -> Stage 2 species
 
-feed_total == play_total
-  Weird
+level 4到達時:
+  Stage 2 species -> Final species
 \`\`\`
 
-Phase 5ではStage 2以降と複雑な進化ツリーは実装しない。
+Family選択とFinal分岐は、既存の `care_stats` に保存される `feed_total` / `play_total` を使って決定的に行う。
+
+旧saveに保存された `Fluffy` / `Sharp` / `Weird` は保存マイグレーション時に正式なSpecies IDへ移行する。
 
 **---**
 
@@ -419,6 +447,12 @@ Phase 7のMVPでは、Exploreの所要時間は1時間とする。
 帰還時にはexperienceを5、moodを5獲得する。
 
 これらの値はDomain層の定数として一箇所で管理する。
+
+帰還報酬で進化条件を満たしても、外出中に進化後の姿を確定表示しない。
+
+外出中に条件を満たした進化はpendingとして保持し、帰還後にユーザーが再びペットと向き合うタイミングで演出とともに確定する。
+
+外出中のstatusは扉表示と帰還予定時刻だけを表示し、現在のMonster ASCII Artや進化後Speciesを見せない。
 
 **---**
 

@@ -87,6 +87,50 @@ fn streak_counts_consecutive_login_days() {
 }
 
 #[test]
+fn streak_counts_local_calendar_days() {
+    let save_dir = test_save_dir("streak_counts_local_calendar_days");
+    let mut repository = FileRepository::new(save_dir.clone());
+    let mut state = saved_state(53_400);
+    state.login = LoginState {
+        last_login_day: Some(0),
+        streak: 1,
+    };
+    repository.save(&state).expect("game should be saved");
+
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::with_local_day_offset(55_200, 9 * 3_600),
+    );
+    let login = service.streak().expect("streak should load");
+
+    assert_eq!(login.last_login_day, Some(1));
+    assert_eq!(login.streak, 2);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn daily_report_resets_at_local_midnight() {
+    let save_dir = test_save_dir("daily_report_resets_at_local_midnight");
+    let mut state = saved_state(53_400);
+    state.daily_report.record_feed(53_400, 5);
+    let mut repository = FileRepository::new(save_dir.clone());
+    repository.save(&state).expect("game should be saved");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::with_local_day_offset(55_200, 9 * 3_600),
+    );
+
+    let report = service.report().expect("report should load");
+
+    assert_eq!(report.day, 1);
+    assert_eq!(report.feed_count, 0);
+    assert_eq!(report.events.len(), 1);
+
+    cleanup(save_dir);
+}
+
+#[test]
 fn streak_resets_after_missed_day() {
     let save_dir = test_save_dir("streak_resets_after_missed_day");
     let mut state = saved_state(3_600);
@@ -165,6 +209,8 @@ fn saved_state(last_updated_at: u64) -> GameState {
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
         expedition: None,
+        hatching: None,
+        pending_evolution: None,
     }
 }
 

@@ -160,6 +160,21 @@ README
 
 **---**
 
+**## Phase 9**
+
+完成前整合性
+
+\`\`\`text
+Monster Domain final check
+legacy save fixtures
+Egg lifecycle
+hatching boundary
+local calendar day handling
+Native / Wasm checks
+\`\`\`
+
+**---**
+
 **# 38. AI Agent実装ルール**
 
 AI Agentは以下を守る。

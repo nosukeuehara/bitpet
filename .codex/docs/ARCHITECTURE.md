@@ -71,6 +71,7 @@ bitpet/
 │   ├── domain/
 │   │   ├── mod.rs
 │   │   ├── pet.rs
+│   │   ├── monster.rs
 │   │   ├── status.rs
 │   │   ├── action.rs
 │   │   ├── evolution.rs
@@ -86,7 +87,8 @@ bitpet/
 │   │
 │   └── ascii/
 │       ├── mod.rs
-│       └── pets.rs
+│       ├── pets.rs
+│       └── monsters/
 │
 └── tests/
     ├── lifecycle.rs
@@ -104,6 +106,55 @@ CLI
 \`\`\`
 
 の3つは分離すること。
+
+**---**
+
+**# 3.1 Monster Domain**
+
+v0.2.0ではMonster DomainをDomain層へ追加する。
+
+現在の責務:
+
+\`\`\`text
+src/domain/monster.rs
+  SpeciesId
+  MonsterFamily
+  MonsterDefinition
+  Monster catalog
+  Monster evolution tree
+  Legacy evolution mapping
+
+src/domain/evolution.rs
+  GrowthStage (Egg / Baby / Stage1 / Stage2 / Final)
+  EvolutionEvent
+  PendingEvolution
+
+src/domain/hatching.rs
+  HatchingState
+  deterministic hatch boundary
+
+src/domain/pet.rs
+  Pet state
+  level recalculation
+  growth stage transition candidate / application
+
+src/ascii/monsters/
+  SpeciesIdに対応するASCII Art asset
+\`\`\`
+
+Domain層は `SpeciesId` を扱うが、ASCII Art文字列やterminal表示へ依存しない。
+
+CLI renderer / ASCII層が `SpeciesId` から表示用assetを解決する。
+
+行動中の進化はDomain/Applicationで制御する。外出報酬などで条件を満たした場合は `PendingEvolution` として保存し、`pet.stage` / `pet.species_id` は進化前の姿を保持する。
+
+Application層はpet-facing commandでpendingを解決し、`EvolutionEvent` を返す。CLI層はこのイベントを受けて進化演出を描画するが、Domain層はANSIやsleepへ依存しない。
+
+Monster分類、Species一覧、進化ツリー、ASCII asset mappingの詳細は以下をsource of truthとする。
+
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
 
 **---**
 
@@ -164,6 +215,12 @@ trait Clock {
 \`\`\`
 
 `Timestamp` はUnix epoch秒として扱う。
+
+絶対時刻はDomain / PersistenceでUTC Unix timestampとして扱う。
+
+daily action reset / daily report / login streak の日付判定は、Application層が `Clock` から取得したlocal calendar dayをDomainへ渡す。
+
+CLI表示ではlocal timeへ変換するが、save dataへlocal datetime文字列は保存しない。
 
 本番:
 
@@ -256,6 +313,26 @@ save
 を組み立てる。
 
 Phase 5では、level計算、growth stage更新、evolution判定もDomain層で扱う。
+
+進化イベントの責務:
+
+\`\`\`text
+Domain:
+  evolution candidate
+  pending evolution
+  evolution application
+
+Application:
+  load/update/save
+  expedition completion
+  pending resolution timing
+  EvolutionEvent return
+
+CLI:
+  door status while away
+  ANSI-based evolution effect
+  final status rendering
+\`\`\`
 
 CLIはDomainの状態を表示に変換し、ASCII Artの選択はCLI表示側で行う。
 

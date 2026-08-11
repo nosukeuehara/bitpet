@@ -2,7 +2,7 @@
 
 BitPet は Rust で実装する小さな CLI 育成ゲームです。
 
-現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップと最初の進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
+現在の実装は、Egg から始まるゲーム開始・復元ループ、起動していない間の時間経過反映、孵化、`feed` / `play` による世話、レベルアップ、Monster Domain による Stage 1 / Stage 2 / Final 進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しい Egg を作成して `save.json` に保存し、2 回目以降は保存済みの状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
 
 ## コンセプト
 
@@ -16,7 +16,8 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 
 - `bitpet` という Rust CLI バイナリ
 - `bitpet` と `bitpet status` によるペット状態の表示
-- 初回起動時の新規ゲーム作成
+- 初回起動時の Egg 作成
+- Egg から Baby への決定的な孵化
 - `save.json` への保存
 - 2 回目以降の起動での保存済みゲーム復元
 - 前回起動時刻からの時間経過反映
@@ -26,13 +27,16 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - 1 日あたり `feed` / `play` 各 3 回までの行動回数制限
 - `play` による経験値獲得
 - experience によるレベルアップ
-- Baby から Stage 1 への最初の進化
-- 進化先に応じた ASCII Art 切り替え
+- 7 Family / 28 Species の Monster catalog
+- Baby から Stage 1 / Stage 2 / Final への進化
+- feed/play/帰還時の進化イベント
+- Species ID に応じた ASCII Art 切り替え
 - `bitpet report` による当日の行動レポート表示
 - `bitpet streak` による連続ログイン日数表示
 - 起動日をログイン日として記録
 - `bitpet go` による Explore お出かけ
 - お出かけ中の状態保存と帰還時の結果反映
+- お出かけ中の扉表示と、帰還後の進化演出
 - 小さな ASCII Art 表示
 - CLI、application、domain、infrastructure、ASCII rendering の初期レイヤ分離
 - `GameState`、`Pet`、ステータス値の最小ドメインモデル
@@ -40,8 +44,6 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 
 ## 今後の予定
 
-- Stage 2 以降の成長
-- 複雑な進化ツリー
 - Explore 以外のお出かけ種類
 - Web UI
 
@@ -53,7 +55,7 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 cargo run
 ```
 
-初回起動では保存データがない場合に新しいペットを作成し、状態を表示して保存します。2 回目以降は保存済みの `save.json` を読み込み、前回保存時刻からの経過時間を反映して表示・保存します。
+初回起動では保存データがない場合に新しい Egg を作成し、状態を表示して保存します。2 回目以降は保存済みの `save.json` を読み込み、前回保存時刻からの経過時間を反映して表示・保存します。
 
 ビルド後に実行する場合:
 
@@ -66,10 +68,25 @@ cargo build
 ./target/debug/bitpet go
 ./target/debug/bitpet report
 ./target/debug/bitpet streak
+./target/debug/bitpet --help
 ./target/debug/bitpet --version
 ```
 
-現在の出力は最小のステータス表示です。
+利用可能なコマンドを忘れた場合は `bitpet --help` または `bitpet -h` で確認できます。各コマンドの簡単な説明は `bitpet status --help` のように表示できます。Version は `bitpet --version` または `bitpet -V` で確認できます。
+
+新規ゲーム直後は Egg と孵化までの残り時間を表示します。
+
+```text
+   __
+ /    \
+ \____/
+
+Egg
+
+Hatching in 1h 0m
+```
+
+孵化後の出力は最小のステータス表示です。
 
 ```text
   /\_/\
@@ -80,15 +97,20 @@ Mochi
 Baby
 Lv. 1
 
+Family   : -
 Stage    : Baby
 Mood     : 72%
 Hunger   : 72%
 Energy   : 72%
 ```
 
-`feed` は hunger と mood を回復します。`play` は mood と experience を増やし、energy を消費します。どちらも 1 日 3 回まで実行できます。
+Egg は作成から 1 時間後に Baby へ孵化します。孵化判定は保存済みの `egg_created_at` / `hatches_at` に基づく決定的な処理です。Egg 中は `feed` / `play` / `go` を実行できません。
 
-experience が一定値に達するとレベルが上がり、Baby から Stage 1 へ進化します。最初の進化先は、これまでの `feed` / `play` の傾向によって `Fluffy` / `Sharp` / `Weird` のいずれかになります。
+`feed` は hunger と mood を回復します。`play` は mood と experience を増やし、energy を消費します。どちらも local calendar day ごとに 3 回まで実行できます。
+
+experience が一定値に達するとレベルが上がり、Baby から Stage 1、Stage 2、Final へ進化します。Stage 1 で Family / Species が決まり、以降は基本的にその Family 内で成長します。進化先は `feed` / `play` の累計傾向から決定されます。
+
+進化時は短いCLI演出を表示してから新しい姿を表示します。外出中に進化条件を満たした場合は、その場では進化後の姿を見せず、帰還後にペットと向き合うタイミングで進化します。
 
 `go` は Stage 1 以降のペットを Explore に出かけさせます。BitPet は常駐せず、帰還予定時刻を `save.json` に保存します。帰還時刻を過ぎたあとに次のコマンドを実行すると、結果が反映されます。
 
@@ -100,6 +122,24 @@ Expected return:
 ```
 
 外出中は `feed` / `play` / 再度の `go` は実行できません。
+
+外出中の `status` はMonsterの姿ではなく扉を表示します。
+
+```text
++------+
+|  __  |
+| |  | |
+| |__| |
+|  __  |
+| |  | |
++------+
+
+Out now...
+Back at 18:40
+
+Returns in:
+42m
+```
 
 `report` は当日の `feed` / `play` 回数、獲得 experience、mood 変化、イベントログを表示します。
 
@@ -242,9 +282,11 @@ bitpet/
 
 BitPet は DB を使わず、ローカルファイルへ保存します。
 
-macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login`、お出かけ状態用に `expedition` を保存しています。
+macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login`、お出かけ状態用に `expedition`、Egg の孵化状態用に `hatching`、Monster の安定IDとして `pet.species_id` を保存しています。
 
 古い save version は起動時に現在の形式へ移行します。壊れた `save.json` は panic せず、読み込みエラーとして表示します。
+
+時間経過、孵化、お出かけ帰還は Unix timestamp による絶対時刻で扱います。日次レポート、連続ログイン、行動回数リセットはユーザーの local calendar day で判定します。
 
 ## CI/CD とリリース方針
 
@@ -288,12 +330,16 @@ import init, { BitPetWasm } from "./bitpet.js";
 await init();
 
 const now = Math.floor(Date.now() / 1000);
+const localOffsetSeconds = -new Date().getTimezoneOffset() * 60;
 const saved = localStorage.getItem("bitpet.save");
 const bitpet = saved
-  ? BitPetWasm.from_save_json(saved, now)
-  : BitPetWasm.new_game(now);
+  ? BitPetWasm.from_save_json_with_local_day_offset(saved, now, localOffsetSeconds)
+  : BitPetWasm.new_game_with_local_day_offset(now, localOffsetSeconds);
 
-localStorage.setItem("bitpet.save", bitpet.status(now));
+localStorage.setItem(
+  "bitpet.save",
+  bitpet.status_with_local_day_offset(now, localOffsetSeconds),
+);
 ```
 
 Native 版は filesystem 上の `save.json` を直接読み書きします。Wasm 版は filesystem を使わず、呼び出し側が `save_json()` や各コマンドの戻り値をブラウザ storage へ保存します。
@@ -310,6 +356,7 @@ BitPet は MIT License で配布します。詳細は [LICENSE](LICENSE) を参�
 
 - [Agent guide](.codex/AGENTS.md)
 - [Game design](.codex/docs/GAME_DESIGN.md)
+- [Monster catalog / evolution](.codex/docs/MONSTER.md)
 - [CLI / UX](.codex/docs/CLI_UX.md)
 - [Architecture](.codex/docs/ARCHITECTURE.md)
 - [Persistence](.codex/docs/PERSISTENCE.md)

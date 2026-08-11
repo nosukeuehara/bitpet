@@ -8,6 +8,7 @@ pub enum ApplicationError {
     InvalidSaveData,
     InvalidAction,
     ExpeditionLocked,
+    PetNotHatched,
     PetAway,
     SaveDirectoryUnavailable,
     Storage(String),
@@ -30,6 +31,9 @@ impl Display for ApplicationError {
             }
             Self::ExpeditionLocked => {
                 write!(formatter, "Mochi is not ready to explore yet.")
+            }
+            Self::PetNotHatched => {
+                write!(formatter, "The egg has not hatched yet.")
             }
             Self::PetAway => {
                 write!(

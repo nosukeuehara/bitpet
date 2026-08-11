@@ -240,6 +240,7 @@ bitpet/
 │       ├── CLI_UX.md
 │       ├── DEVELOPMENT.md
 │       ├── GAME_DESIGN.md
+│       ├── MONSTER.md
 │       └── PERSISTENCE.md
 │
 ├── src/
@@ -258,6 +259,7 @@ bitpet/
 │   ├── domain/
 │   │   ├── mod.rs
 │   │   ├── pet.rs
+│   │   ├── monster.rs
 │   │   ├── status.rs
 │   │   ├── action.rs
 │   │   ├── evolution.rs
@@ -273,7 +275,8 @@ bitpet/
 │   │
 │   └── ascii/
 │       ├── mod.rs
-│       └── pets.rs
+│       ├── pets.rs
+│       └── monsters/
 │
 ├── tests/
 │   ├── lifecycle.rs
@@ -382,7 +385,40 @@ Streak
 
 ---
 
-## 5.3 .codex/docs/CLI_UX.md
+## 5.3 .codex/docs/MONSTER.md
+
+Monster関連仕様を管理する。
+
+内容:
+
+```text
+Monster classification
+MonsterFamily
+Species
+Monster catalog
+Monster evolution tree
+Monster naming
+ASCII asset mapping
+Legacy evolution migration concept
+```
+
+以下の変更時に参照する。
+
+```text
+Monster
+SpeciesId
+MonsterFamily
+Evolution tree
+ASCII asset mapping
+```
+
+Monsterの詳細なFamily / Species /進化ツリーはこのファイルをsource of truthとする。
+
+GAME_DESIGN.mdには進化のゲームルールを置き、28体の一覧はコピーしない。
+
+---
+
+## 5.4 .codex/docs/CLI_UX.md
 
 CLIとユーザー体験を管理する。
 
@@ -417,7 +453,7 @@ Domainは状態を返し、CLI rendererが表示へ変換する。
 
 ---
 
-## 5.4 .codex/docs/ARCHITECTURE.md
+## 5.5 .codex/docs/ARCHITECTURE.md
 
 内部設計を管理する。
 
@@ -452,7 +488,7 @@ bitpet-wasm
 
 ---
 
-## 5.5 .codex/docs/PERSISTENCE.md
+## 5.6 .codex/docs/PERSISTENCE.md
 
 保存データに関する仕様を管理する。
 
@@ -480,7 +516,7 @@ save formatを変更する場合は必ずこのファイルを更新する。
 
 ---
 
-## 5.6 .codex/docs/DEVELOPMENT.md
+## 5.7 .codex/docs/DEVELOPMENT.md
 
 開発・ビルド・配布に関する詳細を管理する。
 
@@ -522,6 +558,9 @@ AGENTS.mdにはCI/CDの原則のみ記載し、workflowの詳細はこのファ�
 ゲームルール
 → .codex/docs/GAME_DESIGN.md
 
+Monster classification / MonsterFamily / Species / Monster catalog / Monster evolution tree / Monster naming / ASCII asset mapping
+→ .codex/docs/MONSTER.md
+
 CLI / 表示
 → .codex/docs/CLI_UX.md
 
@@ -560,7 +599,19 @@ AI Agentは作業開始前にAGENTS.mdを読む。
 
 例:
 
-進化機能:
+Monster / Evolution:
+
+```text
+AGENTS.md
+↓
+.codex/docs/MONSTER.md
+↓
+.codex/docs/GAME_DESIGN.md
+↓
+.codex/docs/ARCHITECTURE.md
+```
+
+進化のゲームルールのみを扱う場合:
 
 ```text
 AGENTS.md
