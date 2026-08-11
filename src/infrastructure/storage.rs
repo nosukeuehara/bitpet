@@ -1,6 +1,9 @@
 use crate::application::{ApplicationError, ApplicationResult};
 use crate::domain::evolution::{EvolutionKind, GrowthStage};
-use crate::domain::{CareStats, DailyActions, GameState, Pet, Timestamp, SAVE_VERSION};
+use crate::domain::report::{ReportEvent, ReportEventKind};
+use crate::domain::{
+    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, Timestamp, SAVE_VERSION,
+};
 use crate::infrastructure::filesystem;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -124,6 +127,8 @@ struct SaveData {
     last_updated_at: Option<Timestamp>,
     daily_actions: Option<SaveDailyActions>,
     care_stats: Option<SaveCareStats>,
+    daily_report: Option<SaveDailyReport>,
+    login: Option<SaveLoginState>,
     pet: SavePet,
 }
 
@@ -138,6 +143,29 @@ struct SaveDailyActions {
 struct SaveCareStats {
     feed_total: u32,
     play_total: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SaveDailyReport {
+    day: Timestamp,
+    feed_count: u32,
+    play_count: u32,
+    adventure_count: u32,
+    experience_gained: u32,
+    mood_delta: i32,
+    events: Vec<SaveReportEvent>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SaveReportEvent {
+    timestamp: Timestamp,
+    kind: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SaveLoginState {
+    last_login_day: Option<Timestamp>,
+    streak: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -165,6 +193,24 @@ impl From<&GameState> for SaveData {
             care_stats: Some(SaveCareStats {
                 feed_total: state.care_stats.feed_total,
                 play_total: state.care_stats.play_total,
+            }),
+            daily_report: Some(SaveDailyReport {
+                day: state.daily_report.day,
+                feed_count: state.daily_report.feed_count,
+                play_count: state.daily_report.play_count,
+                adventure_count: state.daily_report.adventure_count,
+                experience_gained: state.daily_report.experience_gained,
+                mood_delta: state.daily_report.mood_delta,
+                events: state
+                    .daily_report
+                    .events
+                    .iter()
+                    .map(SaveReportEvent::from)
+                    .collect(),
+            }),
+            login: Some(SaveLoginState {
+                last_login_day: state.login.last_login_day,
+                streak: state.login.streak,
             }),
             pet: SavePet {
                 name: state.pet.name.clone(),
@@ -200,6 +246,14 @@ impl TryFrom<SaveData> for GameState {
             return Err(ApplicationError::InvalidSaveData);
         }
 
+        if save.version == SAVE_VERSION && save.daily_report.is_none() {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
+        if save.version == SAVE_VERSION && save.login.is_none() {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
         let daily_actions = save.daily_actions.map_or_else(
             || DailyActions::new(0),
             |actions| DailyActions {
@@ -215,6 +269,17 @@ impl TryFrom<SaveData> for GameState {
                 feed_total: stats.feed_total,
                 play_total: stats.play_total,
             });
+
+        let daily_report = save
+            .daily_report
+            .map(TryInto::try_into)
+            .transpose()?
+            .unwrap_or_else(|| DailyReport::new(0));
+
+        let login = save.login.map_or_else(LoginState::new, |login| LoginState {
+            last_login_day: login.last_login_day,
+            streak: login.streak,
+        });
 
         let stage = parse_growth_stage(save.pet.stage.as_deref())?;
         let evolution = parse_evolution_kind(save.pet.evolution.as_deref())?;
@@ -235,6 +300,62 @@ impl TryFrom<SaveData> for GameState {
             last_updated_at: save.last_updated_at.unwrap_or(0),
             daily_actions,
             care_stats,
+            daily_report,
+            login,
+        })
+    }
+}
+
+impl From<&ReportEvent> for SaveReportEvent {
+    fn from(event: &ReportEvent) -> Self {
+        Self {
+            timestamp: event.timestamp,
+            kind: match event.kind {
+                ReportEventKind::Login => "login",
+                ReportEventKind::Feed => "feed",
+                ReportEventKind::Play => "play",
+            }
+            .to_string(),
+        }
+    }
+}
+
+impl TryFrom<SaveDailyReport> for DailyReport {
+    type Error = ApplicationError;
+
+    fn try_from(report: SaveDailyReport) -> Result<Self, Self::Error> {
+        let events = report
+            .events
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<ApplicationResult<Vec<_>>>()?;
+
+        Ok(Self {
+            day: report.day,
+            feed_count: report.feed_count,
+            play_count: report.play_count,
+            adventure_count: report.adventure_count,
+            experience_gained: report.experience_gained,
+            mood_delta: report.mood_delta,
+            events,
+        })
+    }
+}
+
+impl TryFrom<SaveReportEvent> for ReportEvent {
+    type Error = ApplicationError;
+
+    fn try_from(event: SaveReportEvent) -> Result<Self, Self::Error> {
+        let kind = match event.kind.as_str() {
+            "login" => ReportEventKind::Login,
+            "feed" => ReportEventKind::Feed,
+            "play" => ReportEventKind::Play,
+            _ => return Err(ApplicationError::InvalidSaveData),
+        };
+
+        Ok(Self {
+            timestamp: event.timestamp,
+            kind,
         })
     }
 }

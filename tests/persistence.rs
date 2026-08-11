@@ -1,5 +1,7 @@
 use bitpet::application::{ApplicationError, GameService};
-use bitpet::domain::{CareStats, DailyActions, GameState, Pet, SAVE_VERSION};
+use bitpet::domain::{
+    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
+};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -16,7 +18,11 @@ fn creates_new_game_when_save_data_does_not_exist() {
 
     let state = service.status().expect("new game should be created");
 
-    assert_eq!(state, GameState::new(3_600));
+    assert_eq!(state.version, SAVE_VERSION);
+    assert_eq!(state.pet, GameState::new(3_600).pet);
+    assert_eq!(state.last_updated_at, 3_600);
+    assert_eq!(state.login.streak, 1);
+    assert_eq!(state.daily_report.events.len(), 1);
     assert!(save_dir.join("save.json").is_file());
 
     cleanup(save_dir);
@@ -31,10 +37,12 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 4"#));
+    assert!(contents.contains(r#""version": 5"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""daily_actions""#));
     assert!(contents.contains(r#""care_stats""#));
+    assert!(contents.contains(r#""daily_report""#));
+    assert!(contents.contains(r#""login""#));
     assert!(contents.contains(r#""stage": "Baby""#));
     assert!(contents.contains(r#""evolution": "Baby""#));
     assert!(contents.contains(r#""name": "Mochi""#));
@@ -52,6 +60,8 @@ fn loads_saved_game() {
         last_updated_at: 3_600,
         daily_actions: DailyActions::new(0),
         care_stats: CareStats::new(),
+        daily_report: DailyReport::new(0),
+        login: LoginState::new(),
     };
 
     repository.save(&state).expect("game should be saved");
@@ -72,6 +82,8 @@ fn save_then_load_keeps_pet_main_state() {
         last_updated_at: 7_200,
         daily_actions: DailyActions::new(0),
         care_stats: CareStats::new(),
+        daily_report: DailyReport::new(0),
+        login: LoginState::new(),
     };
 
     repository.save(&state).expect("game should be saved");
@@ -118,6 +130,8 @@ fn migrates_phase2_save_without_last_updated_at_without_panic() {
     assert_eq!(state.daily_actions.day, 0);
     assert_eq!(state.care_stats.feed_total, 0);
     assert_eq!(state.care_stats.play_total, 0);
+    assert_eq!(state.daily_report.day, 0);
+    assert_eq!(state.login.streak, 1);
 
     cleanup(save_dir);
 }
@@ -155,6 +169,8 @@ fn migrates_phase3_save_without_daily_actions_without_panic() {
     assert_eq!(state.daily_actions.play_count, 0);
     assert_eq!(state.care_stats.feed_total, 0);
     assert_eq!(state.care_stats.play_total, 0);
+    assert_eq!(state.daily_report.feed_count, 0);
+    assert_eq!(state.login.streak, 1);
 
     cleanup(save_dir);
 }

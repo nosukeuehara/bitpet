@@ -47,8 +47,8 @@ where
             Err(error) => return Err(error.into()),
         },
         Command::Go => renderer::render_not_implemented("go"),
-        Command::Report => renderer::render_not_implemented("report"),
-        Command::Streak => renderer::render_not_implemented("streak"),
+        Command::Report => renderer::render_report(&service.report()?),
+        Command::Streak => renderer::render_streak(&service.streak()?),
         Command::Version => env!("CARGO_PKG_VERSION").to_string(),
     };
 

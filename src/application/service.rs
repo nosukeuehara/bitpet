@@ -1,7 +1,7 @@
 use crate::application::result::ApplicationResult;
 use crate::application::ApplicationError;
 use crate::domain::action::{Action, ActionError, ActionOutcome};
-use crate::domain::{time, GameState, SAVE_VERSION};
+use crate::domain::{time, DailyReport, GameState, LoginState, SAVE_VERSION};
 use crate::infrastructure::clock::{Clock, SystemClock};
 use crate::infrastructure::storage::GameRepository;
 
@@ -41,14 +41,23 @@ where
         self.perform_action(Action::Play)
     }
 
+    pub fn report(&mut self) -> ApplicationResult<DailyReport> {
+        let state = self.load_update_and_save()?;
+        Ok(state.daily_report)
+    }
+
+    pub fn streak(&mut self) -> ApplicationResult<LoginState> {
+        let state = self.load_update_and_save()?;
+        Ok(state.login)
+    }
+
     fn perform_action(&mut self, action: Action) -> ApplicationResult<ActionOutcome> {
         let now = self.clock.now();
         let mut state = self.load_and_update_time(now)?;
-        let day = time::day_index(now);
 
         match action {
-            Action::Feed => state.feed(day),
-            Action::Play => state.play(day),
+            Action::Feed => state.feed(now),
+            Action::Play => state.play(now),
             Action::Go => Ok(()),
         }
         .map_err(application_action_error)?;
@@ -80,16 +89,28 @@ where
         }
 
         let day = time::day_index(now);
-        if loaded_version < SAVE_VERSION {
-            state.version = SAVE_VERSION;
+        if loaded_version < 3 {
             state.daily_actions = crate::domain::DailyActions::new(day);
-            if loaded_version < 4 {
-                state.care_stats = crate::domain::CareStats::new();
-                state.pet.update_growth(state.care_stats);
-            }
         } else {
             state.daily_actions.reset_if_new_day(day);
         }
+
+        if loaded_version < 4 {
+            state.care_stats = crate::domain::CareStats::new();
+            state.pet.update_growth(state.care_stats);
+        }
+
+        if loaded_version < 5 {
+            state.daily_report = DailyReport::new(day);
+            state.login = LoginState::new();
+        } else {
+            state.daily_report.reset_if_new_day(day);
+        }
+
+        if loaded_version < SAVE_VERSION {
+            state.version = SAVE_VERSION;
+        }
+        state.record_login(day, now);
 
         Ok(state)
     }

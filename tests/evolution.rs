@@ -1,6 +1,8 @@
 use bitpet::application::GameService;
 use bitpet::domain::evolution::{EvolutionKind, GrowthStage};
-use bitpet::domain::{CareStats, DailyActions, GameState, Pet, SAVE_VERSION};
+use bitpet::domain::{
+    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
+};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -76,6 +78,8 @@ fn saved_state(experience: u32, feed_total: u32, last_updated_at: u64) -> GameSt
             feed_total,
             play_total: 0,
         },
+        daily_report: DailyReport::new(last_updated_at / 86_400),
+        login: LoginState::new(),
     }
 }
 

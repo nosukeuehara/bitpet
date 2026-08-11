@@ -8,10 +8,11 @@ pub mod time;
 
 pub use action::{CareStats, DailyActions};
 pub use pet::Pet;
+pub use report::{DailyReport, LoginState};
 
 pub type Timestamp = u64;
 
-pub const SAVE_VERSION: u32 = 4;
+pub const SAVE_VERSION: u32 = 5;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameState {
@@ -20,6 +21,8 @@ pub struct GameState {
     pub last_updated_at: Timestamp,
     pub daily_actions: DailyActions,
     pub care_stats: CareStats,
+    pub daily_report: DailyReport,
+    pub login: LoginState,
 }
 
 impl GameState {
@@ -31,6 +34,8 @@ impl GameState {
             last_updated_at,
             daily_actions: DailyActions::new(day),
             care_stats: CareStats::new(),
+            daily_report: DailyReport::new(day),
+            login: LoginState::new(),
         }
     }
 }

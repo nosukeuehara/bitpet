@@ -478,6 +478,18 @@ struct DailyReport {
 }
 \`\`\`
 
+Phase 6では、日付はUnix epoch日数として扱う。
+
+Phase 6で記録するイベントは以下に限定する。
+
+\`\`\`text
+login
+feed
+play
+\`\`\`
+
+`expedition_count` は、お出かけ実装まで `0` のまま扱う。
+
 **---**
 
 **# 18. イベントログ**

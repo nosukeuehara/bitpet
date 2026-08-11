@@ -29,7 +29,7 @@ fn elapsed_amount(elapsed_seconds: Timestamp, amount_per_hour: Timestamp) -> u8 
 #[cfg(test)]
 mod tests {
     use super::apply_elapsed_time;
-    use crate::domain::{CareStats, DailyActions, GameState, Pet};
+    use crate::domain::{CareStats, DailyActions, DailyReport, GameState, LoginState, Pet};
 
     #[test]
     fn no_elapsed_time_keeps_status() {
@@ -39,6 +39,8 @@ mod tests {
             last_updated_at: 3_600,
             daily_actions: DailyActions::new(0),
             care_stats: CareStats::new(),
+            daily_report: DailyReport::new(0),
+            login: LoginState::new(),
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -56,6 +58,8 @@ mod tests {
             last_updated_at: 0,
             daily_actions: DailyActions::new(0),
             care_stats: CareStats::new(),
+            daily_report: DailyReport::new(0),
+            login: LoginState::new(),
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -73,6 +77,8 @@ mod tests {
             last_updated_at: 0,
             daily_actions: DailyActions::new(0),
             care_stats: CareStats::new(),
+            daily_report: DailyReport::new(0),
+            login: LoginState::new(),
         };
 
         apply_elapsed_time(&mut state, 10_800);
@@ -89,6 +95,8 @@ mod tests {
             last_updated_at: 0,
             daily_actions: DailyActions::new(0),
             care_stats: CareStats::new(),
+            daily_report: DailyReport::new(0),
+            login: LoginState::new(),
         };
 
         apply_elapsed_time(&mut state, 360_000);
@@ -105,6 +113,8 @@ mod tests {
             last_updated_at: 10_000,
             daily_actions: DailyActions::new(0),
             care_stats: CareStats::new(),
+            daily_report: DailyReport::new(0),
+            login: LoginState::new(),
         };
 
         apply_elapsed_time(&mut state, 9_000);

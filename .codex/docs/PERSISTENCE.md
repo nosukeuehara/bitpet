@@ -40,7 +40,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 4,
+  "version": 5,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
@@ -50,6 +50,32 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
   "care_stats": {
     "feed_total": 4,
     "play_total": 2
+  },
+  "daily_report": {
+    "day": 20370,
+    "feed_count": 1,
+    "play_count": 1,
+    "adventure_count": 0,
+    "experience_gained": 5,
+    "mood_delta": 15,
+    "events": [
+      {
+        "timestamp": 1760000000,
+        "kind": "login"
+      },
+      {
+        "timestamp": 1760000060,
+        "kind": "feed"
+      },
+      {
+        "timestamp": 1760000120,
+        "kind": "play"
+      }
+    ]
+  },
+  "login": {
+    "last_login_day": 20370,
+    "streak": 3
   },
   "pet": {
     "name": "Mochi",
@@ -85,6 +111,12 @@ Phase 4では、`version: 1` または `version: 2` の既存saveに `daily_acti
 `care_stats` は進化判定に使う累計行動数を保存する。
 
 Phase 5では、`version: 1` から `version: 3` の既存saveに `care_stats` や `pet.stage` / `pet.evolution` が存在しない場合、読み込み時に補完して `version: 4` として保存し直す。
+
+`daily_report` は当日の行動回数、獲得経験値、mood変化、イベントログを保存する。
+
+`login` は連続ログイン日数と最後にログインしたUnix epoch日数を保存する。
+
+Phase 6では、`version: 1` から `version: 4` の既存saveに `daily_report` や `login` が存在しない場合、読み込み時に補完して `version: 5` として保存し直す。
 
 **---**
 

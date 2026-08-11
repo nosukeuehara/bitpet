@@ -1,5 +1,7 @@
 use bitpet::application::{ApplicationError, GameService};
-use bitpet::domain::{CareStats, DailyActions, GameState, Pet, SAVE_VERSION};
+use bitpet::domain::{
+    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
+};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -25,6 +27,7 @@ fn feed_updates_hunger_and_mood_and_saves() {
     assert_eq!(outcome.state.pet.status.hunger, 80);
     assert_eq!(outcome.state.pet.status.mood, 75);
     assert_eq!(outcome.state.daily_actions.feed_count, 1);
+    assert_eq!(outcome.state.daily_report.feed_count, 1);
     assert_eq!(loaded, outcome.state);
 
     cleanup(save_dir);
@@ -50,6 +53,8 @@ fn play_updates_mood_energy_experience_and_saves() {
     assert_eq!(outcome.state.pet.status.energy, 40);
     assert_eq!(outcome.state.pet.experience, 13);
     assert_eq!(outcome.state.daily_actions.play_count, 1);
+    assert_eq!(outcome.state.daily_report.play_count, 1);
+    assert_eq!(outcome.state.daily_report.experience_gained, 5);
     assert_eq!(loaded, outcome.state);
 
     cleanup(save_dir);
@@ -76,6 +81,7 @@ fn daily_feed_limit_returns_error_without_extra_count() {
         Err(ApplicationError::ActionLimitReached(_))
     ));
     assert_eq!(loaded.daily_actions.feed_count, 3);
+    assert_eq!(loaded.daily_report.feed_count, 0);
     assert_eq!(loaded.pet.status.hunger, 60);
 
     cleanup(save_dir);
@@ -122,6 +128,8 @@ fn saved_state(
             feed_total: feed_count,
             play_total: 0,
         },
+        daily_report: DailyReport::new(last_updated_at / 86_400),
+        login: LoginState::new(),
     }
 }
 

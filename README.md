@@ -2,7 +2,7 @@
 
 BitPet は Rust で実装する小さな CLI 育成ゲームです。
 
-現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップと最初の進化まで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。お出かけ、レポート、リリース自動化、Wasm 出力はまだ未実装です。
+現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップと最初の進化、日次レポート、連続ログイン日数の表示まで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。お出かけ、リリース自動化、Wasm 出力はまだ未実装です。
 
 ## コンセプト
 
@@ -28,6 +28,9 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - experience によるレベルアップ
 - Baby から Stage 1 への最初の進化
 - 進化先に応じた ASCII Art 切り替え
+- `bitpet report` による当日の行動レポート表示
+- `bitpet streak` による連続ログイン日数表示
+- 起動日をログイン日として記録
 - 小さな ASCII Art 表示
 - CLI、application、domain、infrastructure、ASCII rendering の初期レイヤ分離
 - `GameState`、`Pet`、ステータス値の最小ドメインモデル
@@ -38,7 +41,6 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - Stage 2 以降の成長
 - 複雑な進化ツリー
 - お出かけと帰還結果
-- Daily Report と連続ログイン
 - Native CLI のリリース workflow
 - 将来的な Wasm / Web UI 対応
 
@@ -60,6 +62,8 @@ cargo build
 ./target/debug/bitpet status
 ./target/debug/bitpet feed
 ./target/debug/bitpet play
+./target/debug/bitpet report
+./target/debug/bitpet streak
 ./target/debug/bitpet --version
 ```
 
@@ -84,12 +88,36 @@ Energy   : 72%
 
 experience が一定値に達するとレベルが上がり、Baby から Stage 1 へ進化します。最初の進化先は、これまでの `feed` / `play` の傾向によって `Fluffy` / `Sharp` / `Weird` のいずれかになります。
 
+`report` は当日の `feed` / `play` 回数、獲得 experience、mood 変化、イベントログを表示します。
+
+```text
+BitPet Daily Report
+
+Feed        1
+Play        1
+Adventure   0
+
+EXP gained  5
+Mood        +15
+
+Events
+09:00 Checked in
+09:01 Fed Mochi
+09:02 Played with Mochi
+```
+
+`streak` は BitPet を連続して起動した日数を表示します。BitPet は常駐せず、コマンド起動時にその日をログイン日として記録します。
+
+```text
+Login streak
+
+3 day(s)
+```
+
 以下のコマンドはパースされますが、ゲーム処理はまだ未実装です。
 
 ```bash
 bitpet go
-bitpet report
-bitpet streak
 ```
 
 ## インストール方法
@@ -175,7 +203,7 @@ bitpet/
 
 BitPet は DB を使わず、ローカルファイルへ保存します。
 
-macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats` を保存しています。
+macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login` を保存しています。
 
 ## CI/CD とリリース方針
 

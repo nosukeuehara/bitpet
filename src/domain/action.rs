@@ -71,8 +71,10 @@ impl DailyActions {
 }
 
 impl GameState {
-    pub fn feed(&mut self, day: Timestamp) -> Result<(), ActionError> {
+    pub fn feed(&mut self, timestamp: Timestamp) -> Result<(), ActionError> {
+        let day = crate::domain::time::day_index(timestamp);
         self.daily_actions.reset_if_new_day(day);
+        self.daily_report.reset_if_new_day(day);
         if self.daily_actions.feed_count >= DAILY_ACTION_LIMIT {
             return Err(ActionError::DailyLimitReached(Action::Feed));
         }
@@ -86,12 +88,16 @@ impl GameState {
         self.pet.status.mood = self.pet.status.mood.saturating_add(FEED_MOOD_GAIN).min(100);
         self.daily_actions.feed_count += 1;
         self.care_stats.feed_total = self.care_stats.feed_total.saturating_add(1);
+        self.daily_report
+            .record_feed(timestamp, i32::from(FEED_MOOD_GAIN));
         self.pet.update_growth(self.care_stats);
         Ok(())
     }
 
-    pub fn play(&mut self, day: Timestamp) -> Result<(), ActionError> {
+    pub fn play(&mut self, timestamp: Timestamp) -> Result<(), ActionError> {
+        let day = crate::domain::time::day_index(timestamp);
         self.daily_actions.reset_if_new_day(day);
+        self.daily_report.reset_if_new_day(day);
         if self.daily_actions.play_count >= DAILY_ACTION_LIMIT {
             return Err(ActionError::DailyLimitReached(Action::Play));
         }
@@ -101,6 +107,8 @@ impl GameState {
         self.pet.experience = self.pet.experience.saturating_add(PLAY_EXPERIENCE_GAIN);
         self.daily_actions.play_count += 1;
         self.care_stats.play_total = self.care_stats.play_total.saturating_add(1);
+        self.daily_report
+            .record_play(timestamp, PLAY_EXPERIENCE_GAIN, i32::from(PLAY_MOOD_GAIN));
         self.pet.update_growth(self.care_stats);
         Ok(())
     }
