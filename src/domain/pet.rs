@@ -8,6 +8,28 @@ pub struct Pet {
     pub status: Status,
 }
 
+impl Pet {
+    pub fn new(
+        name: String,
+        level: u32,
+        experience: u32,
+        hunger: u8,
+        mood: u8,
+        energy: u8,
+    ) -> Self {
+        Self {
+            name,
+            level,
+            experience,
+            status: Status {
+                hunger,
+                mood,
+                energy,
+            },
+        }
+    }
+}
+
 impl Default for Pet {
     fn default() -> Self {
         Self {

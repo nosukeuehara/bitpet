@@ -7,6 +7,8 @@ pub mod status;
 
 pub use pet::Pet;
 
+pub const SAVE_VERSION: u32 = 1;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameState {
     pub version: u32,
@@ -16,7 +18,7 @@ pub struct GameState {
 impl Default for GameState {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: SAVE_VERSION,
             pet: Pet::default(),
         }
     }

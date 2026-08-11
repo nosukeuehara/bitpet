@@ -14,7 +14,13 @@ where
         Self { repository }
     }
 
-    pub fn status(&self) -> ApplicationResult<GameState> {
-        self.repository.load()
+    pub fn status(&mut self) -> ApplicationResult<GameState> {
+        if self.repository.exists() {
+            self.repository.load()
+        } else {
+            let state = GameState::default();
+            self.repository.save(&state)?;
+            Ok(state)
+        }
     }
 }

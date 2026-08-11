@@ -2,8 +2,7 @@ pub mod commands;
 pub mod renderer;
 
 use crate::application::GameService;
-use crate::domain::GameState;
-use crate::infrastructure::storage::MemoryRepository;
+use crate::infrastructure::storage::FileRepository;
 use commands::Command;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -28,8 +27,8 @@ where
     I: IntoIterator<Item = String>,
 {
     let command = Command::parse(args)?;
-    let repository = MemoryRepository::new(GameState::default());
-    let service = GameService::new(repository);
+    let repository = FileRepository::from_default_save_dir()?;
+    let mut service = GameService::new(repository);
     let output = match command {
         Command::Status => renderer::render_status(&service.status()?),
         Command::Feed => renderer::render_not_implemented("feed"),
