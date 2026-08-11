@@ -393,6 +393,10 @@ impl TryFrom<SaveExpedition> for Expedition {
     type Error = ApplicationError;
 
     fn try_from(expedition: SaveExpedition) -> Result<Self, Self::Error> {
+        if expedition.returns_at < expedition.started_at {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
         let expedition_type = match expedition.expedition_type.as_str() {
             "Explore" => ExpeditionType::Explore,
             _ => return Err(ApplicationError::InvalidSaveData),

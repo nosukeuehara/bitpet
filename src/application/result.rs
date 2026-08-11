@@ -6,6 +6,7 @@ use std::fmt::{Display, Formatter};
 pub enum ApplicationError {
     ActionLimitReached(Action),
     InvalidSaveData,
+    InvalidAction,
     ExpeditionLocked,
     PetAway,
     SaveDirectoryUnavailable,
@@ -23,6 +24,9 @@ impl Display for ApplicationError {
             }
             Self::InvalidSaveData => {
                 write!(formatter, "BitPet couldn't read your save data.")
+            }
+            Self::InvalidAction => {
+                write!(formatter, "That action is not available.")
             }
             Self::ExpeditionLocked => {
                 write!(formatter, "Mochi is not ready to explore yet.")

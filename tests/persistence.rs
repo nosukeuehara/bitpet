@@ -179,6 +179,123 @@ fn migrates_phase3_save_without_daily_actions_without_panic() {
 }
 
 #[test]
+fn migrates_phase6_save_without_expedition_without_panic() {
+    let save_dir = test_save_dir("migrates_phase6_save_without_expedition_without_panic");
+    fs::create_dir_all(&save_dir).expect("save directory should be created");
+    fs::write(
+        save_dir.join("save.json"),
+        r#"{
+  "version": 5,
+  "last_updated_at": 9000,
+  "daily_actions": {
+    "day": 0,
+    "feed_count": 0,
+    "play_count": 0
+  },
+  "care_stats": {
+    "feed_total": 0,
+    "play_total": 0
+  },
+  "daily_report": {
+    "day": 0,
+    "feed_count": 0,
+    "play_count": 0,
+    "adventure_count": 0,
+    "experience_gained": 0,
+    "mood_delta": 0,
+    "events": []
+  },
+  "login": {
+    "last_login_day": null,
+    "streak": 0
+  },
+  "pet": {
+    "name": "Mochi",
+    "stage": "Baby",
+    "evolution": "Baby",
+    "level": 1,
+    "experience": 0,
+    "hunger": 72,
+    "mood": 72,
+    "energy": 72
+  }
+}"#,
+    )
+    .expect("phase 6 save should be written");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let state = service.status().expect("old save should be migrated");
+
+    assert_eq!(state.version, SAVE_VERSION);
+    assert!(state.expedition.is_none());
+    assert_eq!(state.login.streak, 1);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn invalid_expedition_timestamp_returns_error_without_panic() {
+    let save_dir = test_save_dir("invalid_expedition_timestamp_returns_error_without_panic");
+    fs::create_dir_all(&save_dir).expect("save directory should be created");
+    fs::write(
+        save_dir.join("save.json"),
+        r#"{
+  "version": 6,
+  "last_updated_at": 9000,
+  "daily_actions": {
+    "day": 0,
+    "feed_count": 0,
+    "play_count": 0
+  },
+  "care_stats": {
+    "feed_total": 0,
+    "play_total": 0
+  },
+  "daily_report": {
+    "day": 0,
+    "feed_count": 0,
+    "play_count": 0,
+    "adventure_count": 0,
+    "experience_gained": 0,
+    "mood_delta": 0,
+    "events": []
+  },
+  "login": {
+    "last_login_day": null,
+    "streak": 0
+  },
+  "expedition": {
+    "expedition_type": "Explore",
+    "started_at": 9000,
+    "returns_at": 8000,
+    "seed": 1
+  },
+  "pet": {
+    "name": "Mochi",
+    "stage": "Stage 1",
+    "evolution": "Fluffy",
+    "level": 2,
+    "experience": 10,
+    "hunger": 72,
+    "mood": 72,
+    "energy": 72
+  }
+}"#,
+    )
+    .expect("invalid save should be written");
+    let repository = FileRepository::new(save_dir.clone());
+
+    let result = repository.load();
+
+    assert!(matches!(result, Err(ApplicationError::InvalidSaveData)));
+
+    cleanup(save_dir);
+}
+
+#[test]
 fn invalid_save_data_returns_error_without_panic() {
     let save_dir = test_save_dir("invalid_save_data_returns_error_without_panic");
     fs::create_dir_all(&save_dir).expect("save directory should be created");

@@ -215,6 +215,8 @@ BitPet は DB を使わず、ローカルファイルへ保存します。
 
 macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login`、お出かけ状態用に `expedition` を保存しています。
 
+古い save version は起動時に現在の形式へ移行します。壊れた `save.json` は panic せず、読み込みエラーとして表示します。
+
 ## CI/CD とリリース方針
 
 品質確認の基本コマンドは以下です。

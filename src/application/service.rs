@@ -70,7 +70,7 @@ where
         match action {
             Action::Feed => state.feed(now),
             Action::Play => state.play(now),
-            Action::Go => unreachable!("go is handled by start_expedition"),
+            Action::Go => return Err(ApplicationError::InvalidAction),
         }
         .map_err(application_action_error)?;
 
