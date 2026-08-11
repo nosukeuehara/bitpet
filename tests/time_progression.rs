@@ -1,5 +1,5 @@
 use bitpet::application::GameService;
-use bitpet::domain::{GameState, Pet};
+use bitpet::domain::{DailyActions, GameState, Pet, SAVE_VERSION};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -130,9 +130,10 @@ fn future_timestamp_does_not_panic() {
 
 fn saved_state(hunger: u8, energy: u8, last_updated_at: u64) -> GameState {
     GameState {
-        version: 2,
+        version: SAVE_VERSION,
         pet: Pet::new("Mochi".to_string(), 1, 0, hunger, 72, energy),
         last_updated_at,
+        daily_actions: DailyActions::new(last_updated_at / 86_400),
     }
 }
 

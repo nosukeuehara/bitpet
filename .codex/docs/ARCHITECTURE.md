@@ -237,6 +237,24 @@ GameService::report()
 
 CLIは原則GameServiceを呼ぶだけとする。
 
+Phase 4では、`feed` / `play` の状態変更と日次回数制限はDomain層で扱う。
+
+Application層は、
+
+\`\`\`text
+load
+↓
+apply elapsed time
+↓
+reset daily action count when needed
+↓
+execute action
+↓
+save
+\`\`\`
+
+を組み立てる。
+
 **---**
 
 **# 34. Wasm対応方針**

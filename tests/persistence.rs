@@ -1,5 +1,5 @@
 use bitpet::application::{ApplicationError, GameService};
-use bitpet::domain::{GameState, Pet};
+use bitpet::domain::{DailyActions, GameState, Pet, SAVE_VERSION};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -31,8 +31,9 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 2"#));
+    assert!(contents.contains(r#""version": 3"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
+    assert!(contents.contains(r#""daily_actions""#));
     assert!(contents.contains(r#""name": "Mochi""#));
 
     cleanup(save_dir);
@@ -43,9 +44,10 @@ fn loads_saved_game() {
     let save_dir = test_save_dir("loads_saved_game");
     let mut repository = FileRepository::new(save_dir.clone());
     let state = GameState {
-        version: 2,
+        version: SAVE_VERSION,
         pet: Pet::new("Mochi".to_string(), 1, 0, 68, 77, 88),
         last_updated_at: 3_600,
+        daily_actions: DailyActions::new(0),
     };
 
     repository.save(&state).expect("game should be saved");
@@ -61,9 +63,10 @@ fn save_then_load_keeps_pet_main_state() {
     let save_dir = test_save_dir("save_then_load_keeps_pet_main_state");
     let mut repository = FileRepository::new(save_dir.clone());
     let state = GameState {
-        version: 2,
+        version: SAVE_VERSION,
         pet: Pet::new("Mochi".to_string(), 3, 24, 72, 81, 64),
         last_updated_at: 7_200,
+        daily_actions: DailyActions::new(0),
     };
 
     repository.save(&state).expect("game should be saved");
@@ -104,9 +107,45 @@ fn migrates_phase2_save_without_last_updated_at_without_panic() {
 
     let state = service.status().expect("old save should be migrated");
 
-    assert_eq!(state.version, 2);
+    assert_eq!(state.version, SAVE_VERSION);
     assert_eq!(state.pet.status.hunger, 72);
     assert_eq!(state.last_updated_at, 9_000);
+    assert_eq!(state.daily_actions.day, 0);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn migrates_phase3_save_without_daily_actions_without_panic() {
+    let save_dir = test_save_dir("migrates_phase3_save_without_daily_actions_without_panic");
+    fs::create_dir_all(&save_dir).expect("save directory should be created");
+    fs::write(
+        save_dir.join("save.json"),
+        r#"{
+  "version": 2,
+  "last_updated_at": 9000,
+  "pet": {
+    "name": "Mochi",
+    "level": 1,
+    "experience": 0,
+    "hunger": 72,
+    "mood": 72,
+    "energy": 72
+  }
+}"#,
+    )
+    .expect("phase 3 save should be written");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let state = service.status().expect("old save should be migrated");
+
+    assert_eq!(state.version, SAVE_VERSION);
+    assert_eq!(state.daily_actions.day, 0);
+    assert_eq!(state.daily_actions.feed_count, 0);
+    assert_eq!(state.daily_actions.play_count, 0);
 
     cleanup(save_dir);
 }

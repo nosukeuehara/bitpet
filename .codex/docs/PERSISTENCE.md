@@ -40,8 +40,13 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 2,
+  "version": 3,
   "last_updated_at": 1760000000,
+  "daily_actions": {
+    "day": 20370,
+    "feed_count": 1,
+    "play_count": 0
+  },
   "pet": {
     "name": "Mochi",
     "level": 3,
@@ -66,6 +71,10 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 `last_updated_at` はUnix epoch秒で保存する。
 
 Phase 3では、`version: 1` の既存saveに `last_updated_at` が存在しない場合、読み込み時に現在時刻を設定して `version: 2` として保存し直す。
+
+`daily_actions.day` はUnix epoch日数で保存する。
+
+Phase 4では、`version: 1` または `version: 2` の既存saveに `daily_actions` が存在しない場合、読み込み時に現在日で初期化して `version: 3` として保存し直す。
 
 **---**
 

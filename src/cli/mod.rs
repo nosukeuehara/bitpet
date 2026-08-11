@@ -1,6 +1,7 @@
 pub mod commands;
 pub mod renderer;
 
+use crate::application::ApplicationError;
 use crate::application::GameService;
 use crate::infrastructure::storage::FileRepository;
 use commands::Command;
@@ -31,8 +32,20 @@ where
     let mut service = GameService::new(repository);
     let output = match command {
         Command::Status => renderer::render_status(&service.status()?),
-        Command::Feed => renderer::render_not_implemented("feed"),
-        Command::Play => renderer::render_not_implemented("play"),
+        Command::Feed => match service.feed() {
+            Ok(outcome) => renderer::render_action_outcome(&outcome),
+            Err(ApplicationError::ActionLimitReached(action)) => {
+                renderer::render_action_limit_reached(action)
+            }
+            Err(error) => return Err(error.into()),
+        },
+        Command::Play => match service.play() {
+            Ok(outcome) => renderer::render_action_outcome(&outcome),
+            Err(ApplicationError::ActionLimitReached(action)) => {
+                renderer::render_action_limit_reached(action)
+            }
+            Err(error) => return Err(error.into()),
+        },
         Command::Go => renderer::render_not_implemented("go"),
         Command::Report => renderer::render_not_implemented("report"),
         Command::Streak => renderer::render_not_implemented("streak"),

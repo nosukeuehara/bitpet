@@ -234,6 +234,21 @@ play: 3回
 
 程度。
 
+Phase 4 MVPでは以下を適用する。
+
+\`\`\`text
+feed:
+  hunger +20
+  mood +5
+
+play:
+  mood +10
+  energy -10
+  experience +5
+\`\`\`
+
+各ステータスは0..=100の範囲に収める。
+
 上限到達時:
 
 \`\`\`text
