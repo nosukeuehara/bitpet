@@ -132,7 +132,28 @@ Login streak
 
 ## インストール方法
 
-現時点では公開済みのリリースパッケージはありません。
+GitHub Release が公開されている場合は、自分の OS / CPU に合う archive をダウンロードして `bitpet` を実行します。
+
+想定される配布ファイル:
+
+- `bitpet-vX.Y.Z-aarch64-apple-darwin.tar.gz`
+- `bitpet-vX.Y.Z-x86_64-apple-darwin.tar.gz`
+- `bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`
+- `bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip`
+
+macOS / Linux:
+
+```bash
+tar -xzf bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
+./bitpet-vX.Y.Z-x86_64-unknown-linux-gnu/bitpet
+```
+
+Windows:
+
+```powershell
+Expand-Archive bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip
+.\bitpet-vX.Y.Z-x86_64-pc-windows-msvc\bitpet.exe
+```
 
 ローカルでビルドする場合:
 
@@ -228,7 +249,7 @@ cargo test
 cargo build
 ```
 
-GitHub Actions は Pull Request と `main` push で実行する予定です。Native CLI のリリースは Git tag による Semantic Versioning ベースの運用を予定しています。現在の workflow ファイルはプレースホルダーです。
+GitHub Actions は Pull Request と `main` push で CI を実行します。Native CLI のリリースは `vX.Y.Z` 形式の Git tag を push したときに、macOS Apple Silicon、macOS Intel、Linux x86_64、Windows x86_64 向け archive と checksum を作成し、GitHub Release へアップロードする構成です。
 
 ## Wasm 対応について
 

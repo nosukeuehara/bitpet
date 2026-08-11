@@ -1,0 +1,109 @@
+name: Native Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+            binary: bitpet
+          - target: x86_64-apple-darwin
+            os: macos-13
+            archive: tar.gz
+            binary: bitpet
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            binary: bitpet
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+            binary: bitpet.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package Unix archive
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME:-manual}"
+          package="bitpet-${version}-${{ matrix.target }}"
+          mkdir -p "dist/${package}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/${package}/"
+          cp README.md "dist/${package}/"
+          tar -czf "dist/${package}.tar.gz" -C dist "${package}"
+          shasum -a 256 "dist/${package}.tar.gz" > "dist/${package}.tar.gz.sha256"
+
+      - name: Package Windows archive
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "manual" }
+          $package = "bitpet-$version-${{ matrix.target }}"
+          New-Item -ItemType Directory -Path "dist/$package" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/$package/"
+          Copy-Item "README.md" "dist/$package/"
+          Compress-Archive -Path "dist/$package/*" -DestinationPath "dist/$package.zip"
+          (Get-FileHash "dist/$package.zip" -Algorithm SHA256).Hash.ToLower() + "  $package.zip" | Out-File -Encoding ascii "dist/$package.zip.sha256"
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitpet-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
+            dist/*.zip
+            dist/*.zip.sha256
