@@ -188,14 +188,14 @@ Run `bitpet update` to install.
 
 GitHub Release が公開されている場合は、自分の OS / CPU に合う archive をダウンロードして `bitpet` を実行します。
 
-想定される配布ファイル:
+v1.1.0 の配布ファイル:
 
-- `bitpet-vX.Y.Z-aarch64-apple-darwin.tar.gz`
-- `bitpet-vX.Y.Z-x86_64-apple-darwin.tar.gz`
-- `bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`
-- `bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip`
-
-v0.1.0 の場合は `vX.Y.Z` を `v0.1.0` に読み替えてください。
+| Platform | Download |
+|---|---|
+| macOS Apple Silicon (M1 / M2 / M3 / M4 and newer) | `bitpet-v1.1.0-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `bitpet-v1.1.0-x86_64-apple-darwin.tar.gz` |
+| Windows 64-bit | `bitpet-v1.1.0-x86_64-pc-windows-msvc.zip` |
+| Linux 64-bit Intel / AMD | `bitpet-v1.1.0-x86_64-unknown-linux-gnu.tar.gz` |
 
 対応 OS / target:
 
@@ -207,15 +207,17 @@ v0.1.0 の場合は `vX.Y.Z` を `v0.1.0` に読み替えてください。
 macOS / Linux:
 
 ```bash
-tar -xzf bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
-./bitpet-vX.Y.Z-x86_64-unknown-linux-gnu/bitpet
+tar -xzf <downloaded-file>.tar.gz
+cd <extracted-directory>
+./bitpet
 ```
 
 Windows:
 
 ```powershell
-Expand-Archive bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip
-.\bitpet-vX.Y.Z-x86_64-pc-windows-msvc\bitpet.exe
+Expand-Archive <downloaded-file>.zip
+cd <extracted-directory>
+.\bitpet.exe
 ```
 
 ローカルでビルドする場合:

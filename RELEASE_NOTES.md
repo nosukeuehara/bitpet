@@ -33,6 +33,52 @@ modify files.
 If you installed BitPet through a package manager, prefer that package manager's
 update command.
 
+## Download
+
+Choose the file for your computer:
+
+| Platform | Download |
+|---|---|
+| macOS - Apple Silicon (M1 / M2 / M3 / M4...) | `bitpet-v1.1.0-aarch64-apple-darwin.tar.gz` |
+| macOS - Intel | `bitpet-v1.1.0-x86_64-apple-darwin.tar.gz` |
+| Windows - 64-bit | `bitpet-v1.1.0-x86_64-pc-windows-msvc.zip` |
+| Linux - 64-bit Intel / AMD | `bitpet-v1.1.0-x86_64-unknown-linux-gnu.tar.gz` |
+
+Apple Silicon includes M1, M2, M3, M4, and newer Apple Silicon Macs. Intel Macs
+use the separate Intel Mac asset.
+
+Files ending in `.sha256` are checksum files used to verify downloads. You do
+not need them just to install and play BitPet.
+
+The "Source code" downloads are for developers. Most users should download one
+of the BitPet binaries listed above.
+
+## Install
+
+macOS:
+
+```bash
+tar -xzf <downloaded-file>.tar.gz
+cd <extracted-directory>
+./bitpet
+```
+
+Linux:
+
+```bash
+tar -xzf <downloaded-file>.tar.gz
+cd <extracted-directory>
+./bitpet
+```
+
+Windows:
+
+```powershell
+Expand-Archive <downloaded-file>.zip
+cd <extracted-directory>
+.\bitpet.exe
+```
+
 ## Upgrade
 
 Existing save data remains compatible. The updater does not read, write, or move
