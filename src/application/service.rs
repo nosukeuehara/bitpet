@@ -29,6 +29,10 @@ where
         Self { repository, clock }
     }
 
+    pub fn into_repository(self) -> R {
+        self.repository
+    }
+
     pub fn status(&mut self) -> ApplicationResult<GameState> {
         let state = self.load_update_and_save()?;
         Ok(state)

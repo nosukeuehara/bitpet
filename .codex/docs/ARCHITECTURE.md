@@ -292,4 +292,10 @@ OS command
 
 へ依存しないようにする。
 
+Phase 10では、crate分割は行わず `src/wasm.rs` にWasm adapterを追加する。
+
+Wasm adapterはDomain/Applicationを再利用し、ブラウザ側へsave JSONを返す。
+
+ブラウザでの永続化先は `localStorage` や IndexedDB など呼び出し側の責務とする。
+
 **---**

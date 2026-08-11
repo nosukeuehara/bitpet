@@ -44,7 +44,7 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - 複雑な進化ツリー
 - Explore 以外のお出かけ種類
 - Native CLI のリリース workflow
-- 将来的な Wasm / Web UI 対応
+- Web UI
 
 ## CLI の利用イメージ
 
@@ -253,9 +253,42 @@ GitHub Actions は Pull Request と `main` push で CI を実行します。Nati
 
 ## Wasm 対応について
 
-Wasm と Web UI は将来ターゲットです。現在の crate はまだ Wasm package ではありません。
+BitPet は `wasm` feature で WebAssembly 向け adapter をビルドできます。Web UI はまだ未実装ですが、Web アプリケーション側からゲームロジックを呼び出し、save JSON を `localStorage` や IndexedDB へ保存するための入口を用意しています。
 
-ただし、将来的に domain logic を再利用できるよう、terminal や filesystem に依存する処理を domain へ混ぜない構成を目指しています。
+Wasm target の確認:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo check --target wasm32-unknown-unknown --no-default-features --features wasm
+cargo build --release --target wasm32-unknown-unknown --no-default-features --features wasm
+```
+
+Web 向け binding を生成する場合:
+
+```bash
+cargo install wasm-bindgen-cli --version 0.2.127 --locked
+wasm-bindgen target/wasm32-unknown-unknown/release/bitpet.wasm \
+  --out-dir dist/wasm \
+  --target web
+```
+
+Web 側の利用イメージ:
+
+```js
+import init, { BitPetWasm } from "./bitpet.js";
+
+await init();
+
+const now = Math.floor(Date.now() / 1000);
+const saved = localStorage.getItem("bitpet.save");
+const bitpet = saved
+  ? BitPetWasm.from_save_json(saved, now)
+  : BitPetWasm.new_game(now);
+
+localStorage.setItem("bitpet.save", bitpet.status(now));
+```
+
+Native 版は filesystem 上の `save.json` を直接読み書きします。Wasm 版は filesystem を使わず、呼び出し側が `save_json()` や各コマンドの戻り値をブラウザ storage へ保存します。
 
 ## 詳細設計書
 

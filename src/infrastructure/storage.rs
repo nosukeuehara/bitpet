@@ -83,16 +83,13 @@ impl GameRepository for FileRepository {
 
     fn load(&self) -> ApplicationResult<GameState> {
         let contents = fs::read_to_string(self.save_path()).map_err(storage_io_error)?;
-        let save: SaveData =
-            serde_json::from_str(&contents).map_err(|_| ApplicationError::InvalidSaveData)?;
-        save.try_into()
+        state_from_json(&contents)
     }
 
     fn save(&mut self, state: &GameState) -> ApplicationResult<()> {
         fs::create_dir_all(&self.save_dir).map_err(storage_io_error)?;
 
-        let save = SaveData::from(state);
-        let contents = serde_json::to_string_pretty(&save).map_err(storage_serde_error)?;
+        let contents = state_to_json(state)?;
         let save_path = self.save_path();
         let temp_path = self.save_dir.join("save.json.tmp");
 
@@ -120,6 +117,17 @@ fn storage_io_error(error: io::Error) -> ApplicationError {
 
 fn storage_serde_error(error: serde_json::Error) -> ApplicationError {
     storage_error(format!("BitPet couldn't write save data: {error}"))
+}
+
+pub fn state_from_json(contents: &str) -> ApplicationResult<GameState> {
+    let save: SaveData =
+        serde_json::from_str(contents).map_err(|_| ApplicationError::InvalidSaveData)?;
+    save.try_into()
+}
+
+pub fn state_to_json(state: &GameState) -> ApplicationResult<String> {
+    let save = SaveData::from(state);
+    serde_json::to_string_pretty(&save).map_err(storage_serde_error)
 }
 
 #[derive(Debug, Serialize, Deserialize)]
