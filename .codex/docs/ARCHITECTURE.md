@@ -71,6 +71,7 @@ bitpet/
 │   ├── domain/
 │   │   ├── mod.rs
 │   │   ├── pet.rs
+│   │   ├── monster.rs
 │   │   ├── status.rs
 │   │   ├── action.rs
 │   │   ├── evolution.rs
@@ -86,7 +87,8 @@ bitpet/
 │   │
 │   └── ascii/
 │       ├── mod.rs
-│       └── pets.rs
+│       ├── pets.rs
+│       └── monsters/
 │
 └── tests/
     ├── lifecycle.rs
@@ -104,6 +106,45 @@ CLI
 \`\`\`
 
 の3つは分離すること。
+
+**---**
+
+**# 3.1 Monster Domain**
+
+v0.2.0ではMonster DomainをDomain層へ追加する。
+
+現在の責務:
+
+\`\`\`text
+src/domain/monster.rs
+  SpeciesId
+  MonsterFamily
+  MonsterDefinition
+  Monster catalog
+  Monster evolution tree
+  Legacy evolution mapping
+
+src/domain/evolution.rs
+  GrowthStage
+
+src/domain/pet.rs
+  Pet state
+  level recalculation
+  growth stage transition
+
+src/ascii/monsters/
+  SpeciesIdに対応するASCII Art asset
+\`\`\`
+
+Domain層は `SpeciesId` を扱うが、ASCII Art文字列やterminal表示へ依存しない。
+
+CLI renderer / ASCII層が `SpeciesId` から表示用assetを解決する。
+
+Monster分類、Species一覧、進化ツリー、ASCII asset mappingの詳細は以下をsource of truthとする。
+
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
 
 **---**
 

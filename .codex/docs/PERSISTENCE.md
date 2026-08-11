@@ -40,7 +40,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 6,
+  "version": 7,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
@@ -85,8 +85,8 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
   },
   "pet": {
     "name": "Mochi",
-    "stage": "Stage 1",
-    "evolution": "Fluffy",
+    "stage": "Stage 2",
+    "species_id": "fuzzard",
     "level": 3,
     "experience": 24,
     "hunger": 72,
@@ -127,6 +127,27 @@ Phase 6では、`version: 1` から `version: 4` の既存saveに `daily_report`
 `expedition` は外出中の状態を保存する。外出中でなければ `null` とする。
 
 Phase 7では、`version: 1` から `version: 5` の既存saveに `expedition` が存在しない場合、外出していない状態として補完して `version: 6` として保存し直す。
+
+`pet.species_id` はMonsterの安定した内部IDをsnake_caseで保存する。
+
+表示名やASCII Art文字列は保存しない。
+
+Phase 8では、`version: 1` から `version: 6` の既存saveに `pet.species_id` が存在しない場合、旧 `pet.evolution` を以下の決定的な対応で補完して `version: 7` として保存し直す。
+
+\`\`\`text
+Baby   -> baby
+Fluffy -> mofflet
+Sharp  -> spindle
+Weird  -> wormlet
+\`\`\`
+
+`pet.stage` は引き続き `"Baby"` / `"Stage 1"` / `"Stage 2"` / `"Final"` として保存する。
+
+`SpeciesId` と `MonsterFamily`、具体的なSpecies一覧は以下をsource of truthとする。
+
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
 
 **---**
 

@@ -2,7 +2,7 @@
 
 BitPet は Rust で実装する小さな CLI 育成ゲームです。
 
-現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップと最初の進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
+現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップ、Monster Domain による Stage 1 / Stage 2 / Final 進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
 
 ## コンセプト
 
@@ -26,8 +26,9 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - 1 日あたり `feed` / `play` 各 3 回までの行動回数制限
 - `play` による経験値獲得
 - experience によるレベルアップ
-- Baby から Stage 1 への最初の進化
-- 進化先に応じた ASCII Art 切り替え
+- 7 Family / 28 Species の Monster catalog
+- Baby から Stage 1 / Stage 2 / Final への進化
+- Species ID に応じた ASCII Art 切り替え
 - `bitpet report` による当日の行動レポート表示
 - `bitpet streak` による連続ログイン日数表示
 - 起動日をログイン日として記録
@@ -40,8 +41,6 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 
 ## 今後の予定
 
-- Stage 2 以降の成長
-- 複雑な進化ツリー
 - Explore 以外のお出かけ種類
 - Web UI
 
@@ -80,6 +79,7 @@ Mochi
 Baby
 Lv. 1
 
+Family   : -
 Stage    : Baby
 Mood     : 72%
 Hunger   : 72%
@@ -88,7 +88,7 @@ Energy   : 72%
 
 `feed` は hunger と mood を回復します。`play` は mood と experience を増やし、energy を消費します。どちらも 1 日 3 回まで実行できます。
 
-experience が一定値に達するとレベルが上がり、Baby から Stage 1 へ進化します。最初の進化先は、これまでの `feed` / `play` の傾向によって `Fluffy` / `Sharp` / `Weird` のいずれかになります。
+experience が一定値に達するとレベルが上がり、Baby から Stage 1、Stage 2、Final へ進化します。Stage 1 で Family / Species が決まり、以降は基本的にその Family 内で成長します。進化先は `feed` / `play` の累計傾向から決定されます。
 
 `go` は Stage 1 以降のペットを Explore に出かけさせます。BitPet は常駐せず、帰還予定時刻を `save.json` に保存します。帰還時刻を過ぎたあとに次のコマンドを実行すると、結果が反映されます。
 
@@ -242,7 +242,7 @@ bitpet/
 
 BitPet は DB を使わず、ローカルファイルへ保存します。
 
-macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login`、お出かけ状態用に `expedition` を保存しています。
+macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login`、お出かけ状態用に `expedition`、Monster の安定IDとして `pet.species_id` を保存しています。
 
 古い save version は起動時に現在の形式へ移行します。壊れた `save.json` は panic せず、読み込みエラーとして表示します。
 
@@ -310,6 +310,7 @@ BitPet は MIT License で配布します。詳細は [LICENSE](LICENSE) を参�
 
 - [Agent guide](.codex/AGENTS.md)
 - [Game design](.codex/docs/GAME_DESIGN.md)
+- [Monster catalog / evolution](.codex/docs/MONSTER.md)
 - [CLI / UX](.codex/docs/CLI_UX.md)
 - [Architecture](.codex/docs/ARCHITECTURE.md)
 - [Persistence](.codex/docs/PERSISTENCE.md)

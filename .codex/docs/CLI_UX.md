@@ -18,8 +18,11 @@ bitpet
    \> ^ <
 
 Mochi
+Fuzzard
 Lv. 3
 
+Family   : Fuzz
+Stage    : Stage 2
 Mood     : Happy
 Hunger   : 72%
 Energy   : 61%
@@ -159,6 +162,23 @@ bitpet --version
 **# 20. キャラクター表示**
 
 ASCII Artを使用する。
+
+v0.2.0以降は、Baby以外の表示を `SpeciesId` から解決する。
+
+Monster ASCII Artの配置とID対応は以下をsource of truthとする。
+
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
+
+CLI statusでは必要に応じて以下を表示する。
+
+\`\`\`text
+Species name
+Family
+Growth Stage
+Level
+\`\`\`
 
 表示サイズは小さめを基本とする。
 

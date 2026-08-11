@@ -311,9 +311,17 @@ lazy +1
 
 **# 13. 進化ツリー**
 
-MVPでは分岐数を少なくする。
+v0.2.0以降は、進化ツリーの具体的なFamily / Species一覧を以下で管理する。
 
-例:
+\`\`\`text
+.codex/docs/MONSTER.md
+\`\`\`
+
+GAME_DESIGN.mdでは、進化のゲームルールとライフサイクル上の位置づけを管理する。
+
+具体的なSpecies ID、表示名、Family、ASCII asset mapping、進化ツリー全体はMONSTER.mdをsource of truthとし、本書へ28体の一覧はコピーしない。
+
+Phase 5 MVPでは以下の簡易進化を使用していた。
 
 \`\`\`text
                   Baby
@@ -324,9 +332,9 @@ MVPでは分岐数を少なくする。
             ...  ...  ...
 \`\`\`
 
-最初の進化では3〜5種類程度。
+この `Fluffy` / `Sharp` / `Weird` は正式なSpeciesではなく、Stage 1の仮分類として扱う。
 
-後から追加できるデータ構造とする。
+v0.2.0のMonster Systemでは、孵化直後のBabyは共通のまま、Stage 1でFamilyとSpeciesを決定し、その後は基本的に同じFamily内でStage 2、Finalへ成長する。
 
 Phase 5 MVPでは以下を適用する。
 
@@ -337,20 +345,22 @@ level 2到達時:
   Baby -> Stage 1
 \`\`\`
 
-最初の進化先:
+v0.2.0では以下を適用する。
 
 \`\`\`text
-feed_total > play_total
-  Fluffy
+level 2到達時:
+  Baby -> Stage 1 species
 
-play_total > feed_total
-  Sharp
+level 3到達時:
+  Stage 1 species -> Stage 2 species
 
-feed_total == play_total
-  Weird
+level 4到達時:
+  Stage 2 species -> Final species
 \`\`\`
 
-Phase 5ではStage 2以降と複雑な進化ツリーは実装しない。
+Family選択とFinal分岐は、既存の `care_stats` に保存される `feed_total` / `play_total` を使って決定的に行う。
+
+旧saveに保存された `Fluffy` / `Sharp` / `Weird` は保存マイグレーション時に正式なSpecies IDへ移行する。
 
 **---**
 
