@@ -40,7 +40,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 8,
+  "version": 9,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
@@ -84,6 +84,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
     "seed": 1760000000
   },
   "hatching": null,
+  "pending_evolution": null,
   "pet": {
     "name": "Mochi",
     "stage": "Stage 2",
@@ -163,8 +164,9 @@ raw JSON
 ↓
 version 判定
 ↓
-version 1..=7: legacy/current-before-egg save schema へdeserialize
-version 8: current save schema へdeserialize
+version 1..=7: legacy save schema へdeserialize
+version 8: current-before-pending save schema へdeserialize
+version 9: current save schema へdeserialize
 ↓
 GameState へ変換
 ↓
@@ -186,12 +188,27 @@ daily_report.events missing -> []
 login missing          -> LoginState::new()
 login.streak missing   -> 0
 expedition missing     -> None
+hatching missing       -> version 1..=7 の非Egg saveでは None
+pending_evolution missing -> None
 pet.stage missing      -> Baby
 pet.species_id missing -> legacy pet.evolution から決定的に変換
 pet.evolution missing  -> Baby
 \`\`\`
 
-`version: 8` は current schema として扱い、`last_updated_at` / `daily_actions` / `care_stats` / `daily_report` / `login` / `pet.stage` / `pet.species_id` を必須とする。`pet.stage: "Egg"` の場合のみ `hatching` も必須とする。
+`version: 8` は pending evolution 追加前のcurrent schemaとして扱う。`last_updated_at` / `daily_actions` / `care_stats` / `daily_report` / `login` / `pet.stage` / `pet.species_id` を必須とし、`pending_evolution = None` を補完して `version: 9` へ保存する。`pet.stage: "Egg"` の場合のみ `hatching` も必須とする。
+
+`version: 9` はcurrent schemaとして扱う。`pending_evolution` は `null` または以下の形式で保存する。
+
+```json
+"pending_evolution": {
+  "from_stage": "Stage 1",
+  "from_species_id": "mofflet",
+  "to_stage": "Stage 2",
+  "to_species_id": "fuzzard"
+}
+```
+
+`pending_evolution` は、外出報酬などで進化条件を満たしたが、まだユーザーに進化演出を見せていない状態を表す。保存をまたいでも、`pet.stage` / `pet.species_id` は進化前の姿を保持する。次の pet-facing command でpendingを解決し、進化イベントを出してから新しい姿を保存する。
 
 未知の `version`、壊れたJSON、未知の `species_id`、未知の legacy `evolution`、不正な `expedition` は migration 不能として読み込みエラーを返す。
 
@@ -213,6 +230,10 @@ EggはSpeciesそのものではないため、`hatching` がEgg固有状態を�
 `hatching.hatches_at` は `egg_created_at + 3600` 秒とする。
 
 `version: 1` から `version: 7` の既存saveは、読み込み後に `hatching = None` として扱う。既存ユーザーをEggへ戻してはいけない。
+
+Phase 10では、行動中の進化確定表示を避けるため `version: 9` として `pending_evolution` を追加する。
+
+`version: 1` から `version: 8` の既存saveは、読み込み後に `pending_evolution = None` として扱う。既存ユーザーの進行状況やSpeciesをリセットしてはいけない。
 
 時刻の責務:
 

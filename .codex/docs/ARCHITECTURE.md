@@ -126,6 +126,8 @@ src/domain/monster.rs
 
 src/domain/evolution.rs
   GrowthStage (Egg / Baby / Stage1 / Stage2 / Final)
+  EvolutionEvent
+  PendingEvolution
 
 src/domain/hatching.rs
   HatchingState
@@ -134,7 +136,7 @@ src/domain/hatching.rs
 src/domain/pet.rs
   Pet state
   level recalculation
-  growth stage transition
+  growth stage transition candidate / application
 
 src/ascii/monsters/
   SpeciesIdに対応するASCII Art asset
@@ -143,6 +145,10 @@ src/ascii/monsters/
 Domain層は `SpeciesId` を扱うが、ASCII Art文字列やterminal表示へ依存しない。
 
 CLI renderer / ASCII層が `SpeciesId` から表示用assetを解決する。
+
+行動中の進化はDomain/Applicationで制御する。外出報酬などで条件を満たした場合は `PendingEvolution` として保存し、`pet.stage` / `pet.species_id` は進化前の姿を保持する。
+
+Application層はpet-facing commandでpendingを解決し、`EvolutionEvent` を返す。CLI層はこのイベントを受けて進化演出を描画するが、Domain層はANSIやsleepへ依存しない。
 
 Monster分類、Species一覧、進化ツリー、ASCII asset mappingの詳細は以下をsource of truthとする。
 
@@ -307,6 +313,26 @@ save
 を組み立てる。
 
 Phase 5では、level計算、growth stage更新、evolution判定もDomain層で扱う。
+
+進化イベントの責務:
+
+\`\`\`text
+Domain:
+  evolution candidate
+  pending evolution
+  evolution application
+
+Application:
+  load/update/save
+  expedition completion
+  pending resolution timing
+  EvolutionEvent return
+
+CLI:
+  door status while away
+  ANSI-based evolution effect
+  final status rendering
+\`\`\`
 
 CLIはDomainの状態を表示に変換し、ASCII Artの選択はCLI表示側で行う。
 

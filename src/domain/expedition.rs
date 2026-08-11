@@ -1,5 +1,5 @@
 use crate::domain::evolution::GrowthStage;
-use crate::domain::{GameState, Timestamp};
+use crate::domain::{EvolutionEvent, GameState, Timestamp};
 
 pub const EXPEDITION_DURATION_SECONDS: Timestamp = 60 * 60;
 const EXPEDITION_ENERGY_COST: u8 = 10;
@@ -31,6 +31,7 @@ pub struct ExpeditionOutcome {
     pub expedition_type: ExpeditionType,
     pub started_at: Timestamp,
     pub returns_at: Timestamp,
+    pub evolution: Option<EvolutionEvent>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +88,7 @@ impl GameState {
             expedition_type: expedition.expedition_type,
             started_at: expedition.started_at,
             returns_at: expedition.returns_at,
+            evolution: None,
         })
     }
 
@@ -107,7 +109,7 @@ impl GameState {
             .mood
             .saturating_add(EXPEDITION_MOOD_REWARD)
             .min(100);
-        self.pet.update_growth(self.care_stats);
+        self.queue_growth();
         self.daily_report.record_expedition_completed(
             timestamp,
             EXPEDITION_EXPERIENCE_REWARD,

@@ -1,5 +1,5 @@
 use super::action::{level_from_experience, CareStats};
-use super::evolution::GrowthStage;
+use super::evolution::{EvolutionEvent, GrowthStage};
 use super::monster::{definition, next_species, MonsterFamily, SpeciesId};
 use super::status::Status;
 
@@ -36,24 +36,37 @@ impl Pet {
         }
     }
 
-    pub fn update_growth(&mut self, care_stats: CareStats) {
+    pub fn update_growth(&mut self, care_stats: CareStats) -> Option<EvolutionEvent> {
+        let event = self.evolution_candidate(care_stats)?;
+        self.apply_evolution(event);
+        Some(event)
+    }
+
+    pub fn evolution_candidate(&mut self, care_stats: CareStats) -> Option<EvolutionEvent> {
         if self.stage == GrowthStage::Egg {
-            return;
+            return None;
         }
 
         self.level = level_from_experience(self.experience);
 
-        if self.level >= 2 && self.stage == GrowthStage::Baby {
-            self.evolve(care_stats);
+        let can_evolve = matches!(
+            (self.level, self.stage),
+            (2.., GrowthStage::Baby) | (3.., GrowthStage::Stage1) | (4.., GrowthStage::Stage2)
+        );
+        if !can_evolve {
+            return None;
         }
 
-        if self.level >= 3 && self.stage == GrowthStage::Stage1 {
-            self.evolve(care_stats);
-        }
+        let to_species_id = next_species(self.species_id, care_stats)?;
+        let to_stage =
+            definition(to_species_id).map_or(GrowthStage::Baby, |monster| monster.growth_stage);
 
-        if self.level >= 4 && self.stage == GrowthStage::Stage2 {
-            self.evolve(care_stats);
-        }
+        Some(EvolutionEvent {
+            from_stage: self.stage,
+            from_species_id: self.species_id,
+            to_stage,
+            to_species_id,
+        })
     }
 
     pub fn family(&self) -> Option<MonsterFamily> {
@@ -84,12 +97,9 @@ impl Pet {
         }
     }
 
-    fn evolve(&mut self, care_stats: CareStats) {
-        if let Some(species_id) = next_species(self.species_id, care_stats) {
-            self.species_id = species_id;
-            self.stage =
-                definition(species_id).map_or(GrowthStage::Baby, |monster| monster.growth_stage);
-        }
+    pub fn apply_evolution(&mut self, event: EvolutionEvent) {
+        self.stage = event.to_stage;
+        self.species_id = event.to_species_id;
     }
 }
 

@@ -47,7 +47,7 @@ fn one_hour_elapsed_updates_status_and_save() {
     assert_eq!(updated.pet.status.hunger, 69);
     assert_eq!(updated.pet.status.energy, 74);
     assert_eq!(updated.last_updated_at, 7_200);
-    assert_eq!(loaded, updated);
+    assert_eq!(loaded, updated.state);
 
     cleanup(save_dir);
 }
@@ -141,6 +141,7 @@ fn saved_state(hunger: u8, energy: u8, last_updated_at: u64) -> GameState {
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     }
 }
 

@@ -28,10 +28,21 @@ where
     I: IntoIterator<Item = String>,
 {
     let command = Command::parse(args)?;
+    let output = match command {
+        Command::Help(topic) => renderer::render_help(topic),
+        Command::Version => env!("CARGO_PKG_VERSION").to_string(),
+        command => run_game_command(command)?,
+    };
+
+    println!("{output}");
+    Ok(())
+}
+
+fn run_game_command(command: Command) -> Result<String, Box<dyn Error>> {
     let repository = FileRepository::from_default_save_dir()?;
     let mut service = GameService::new(repository);
     let output = match command {
-        Command::Status => renderer::render_status(&service.status()?),
+        Command::Status => renderer::render_status_outcome(&service.status()?),
         Command::Feed => match service.feed() {
             Ok(outcome) => renderer::render_action_outcome(&outcome),
             Err(ApplicationError::ActionLimitReached(action)) => {
@@ -59,9 +70,8 @@ where
         },
         Command::Report => renderer::render_report(&service.report()?),
         Command::Streak => renderer::render_streak(&service.streak()?),
-        Command::Version => env!("CARGO_PKG_VERSION").to_string(),
+        Command::Help(_) | Command::Version => unreachable!("handled before repository access"),
     };
 
-    println!("{output}");
-    Ok(())
+    Ok(output)
 }

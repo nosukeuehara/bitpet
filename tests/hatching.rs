@@ -25,7 +25,7 @@ fn new_game_starts_as_egg_with_deterministic_hatch_time() {
     let loaded = FileRepository::new(save_dir.clone())
         .load()
         .expect("egg save should load");
-    assert_eq!(loaded, state);
+    assert_eq!(loaded, state.state);
 
     cleanup(save_dir);
 }

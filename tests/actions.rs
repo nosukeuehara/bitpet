@@ -153,6 +153,7 @@ fn saved_state(
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     }
 }
 

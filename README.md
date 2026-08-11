@@ -29,12 +29,14 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - experience によるレベルアップ
 - 7 Family / 28 Species の Monster catalog
 - Baby から Stage 1 / Stage 2 / Final への進化
+- feed/play/帰還時の進化イベント
 - Species ID に応じた ASCII Art 切り替え
 - `bitpet report` による当日の行動レポート表示
 - `bitpet streak` による連続ログイン日数表示
 - 起動日をログイン日として記録
 - `bitpet go` による Explore お出かけ
 - お出かけ中の状態保存と帰還時の結果反映
+- お出かけ中の扉表示と、帰還後の進化演出
 - 小さな ASCII Art 表示
 - CLI、application、domain、infrastructure、ASCII rendering の初期レイヤ分離
 - `GameState`、`Pet`、ステータス値の最小ドメインモデル
@@ -66,8 +68,11 @@ cargo build
 ./target/debug/bitpet go
 ./target/debug/bitpet report
 ./target/debug/bitpet streak
+./target/debug/bitpet --help
 ./target/debug/bitpet --version
 ```
+
+利用可能なコマンドを忘れた場合は `bitpet --help` または `bitpet -h` で確認できます。各コマンドの簡単な説明は `bitpet status --help` のように表示できます。Version は `bitpet --version` または `bitpet -V` で確認できます。
 
 新規ゲーム直後は Egg と孵化までの残り時間を表示します。
 
@@ -105,6 +110,8 @@ Egg は作成から 1 時間後に Baby へ孵化します。孵化判定は保�
 
 experience が一定値に達するとレベルが上がり、Baby から Stage 1、Stage 2、Final へ進化します。Stage 1 で Family / Species が決まり、以降は基本的にその Family 内で成長します。進化先は `feed` / `play` の累計傾向から決定されます。
 
+進化時は短いCLI演出を表示してから新しい姿を表示します。外出中に進化条件を満たした場合は、その場では進化後の姿を見せず、帰還後にペットと向き合うタイミングで進化します。
+
 `go` は Stage 1 以降のペットを Explore に出かけさせます。BitPet は常駐せず、帰還予定時刻を `save.json` に保存します。帰還時刻を過ぎたあとに次のコマンドを実行すると、結果が反映されます。
 
 ```text
@@ -115,6 +122,24 @@ Expected return:
 ```
 
 外出中は `feed` / `play` / 再度の `go` は実行できません。
+
+外出中の `status` はMonsterの姿ではなく扉を表示します。
+
+```text
++------+
+|  __  |
+| |  | |
+| |__| |
+|  __  |
+| |  | |
++------+
+
+Out now...
+Back at 18:40
+
+Returns in:
+42m
+```
 
 `report` は当日の `feed` / `play` 回数、獲得 experience、mood 変化、イベントログを表示します。
 

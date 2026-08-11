@@ -72,6 +72,7 @@ mod tests {
             login: LoginState::new(),
             expedition: None,
             hatching: None,
+            pending_evolution: None,
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -93,6 +94,7 @@ mod tests {
             login: LoginState::new(),
             expedition: None,
             hatching: None,
+            pending_evolution: None,
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -114,6 +116,7 @@ mod tests {
             login: LoginState::new(),
             expedition: None,
             hatching: None,
+            pending_evolution: None,
         };
 
         apply_elapsed_time(&mut state, 10_800);
@@ -134,6 +137,7 @@ mod tests {
             login: LoginState::new(),
             expedition: None,
             hatching: None,
+            pending_evolution: None,
         };
 
         apply_elapsed_time(&mut state, 360_000);
@@ -154,6 +158,7 @@ mod tests {
             login: LoginState::new(),
             expedition: None,
             hatching: None,
+            pending_evolution: None,
         };
 
         apply_elapsed_time(&mut state, 9_000);

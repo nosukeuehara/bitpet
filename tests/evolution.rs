@@ -26,6 +26,9 @@ fn play_can_level_up_and_evolve_to_spindle() {
         .load()
         .expect("updated game should load");
 
+    let evolution = outcome.evolution.expect("play should emit evolution event");
+    assert_eq!(evolution.from_species_id, SpeciesId::Baby);
+    assert_eq!(evolution.to_species_id, SpeciesId::Spindle);
     assert_eq!(outcome.state.pet.level, 2);
     assert_eq!(outcome.state.pet.stage, GrowthStage::Stage1);
     assert_eq!(outcome.state.pet.species_id, SpeciesId::Spindle);
@@ -146,6 +149,7 @@ fn saved_state(experience: u32, feed_total: u32, last_updated_at: u64) -> GameSt
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     }
 }
 

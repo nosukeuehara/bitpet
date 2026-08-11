@@ -1,4 +1,4 @@
-use crate::domain::{GameState, Timestamp};
+use crate::domain::{EvolutionEvent, GameState, Timestamp};
 
 pub const DAILY_ACTION_LIMIT: u32 = 3;
 const FEED_HUNGER_GAIN: u8 = 20;
@@ -26,6 +26,7 @@ pub enum ActionError {
 pub struct ActionOutcome {
     pub action: Action,
     pub state: GameState,
+    pub evolution: Option<EvolutionEvent>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,7 +74,11 @@ impl DailyActions {
 }
 
 impl GameState {
-    pub fn feed(&mut self, timestamp: Timestamp, day: Timestamp) -> Result<(), ActionError> {
+    pub fn feed(
+        &mut self,
+        timestamp: Timestamp,
+        day: Timestamp,
+    ) -> Result<Option<EvolutionEvent>, ActionError> {
         self.daily_actions.reset_if_new_day(day);
         self.daily_report.reset_if_new_day(day);
         if self.pet.is_egg() {
@@ -99,11 +104,14 @@ impl GameState {
         self.care_stats.feed_total = self.care_stats.feed_total.saturating_add(1);
         self.daily_report
             .record_feed(timestamp, i32::from(FEED_MOOD_GAIN));
-        self.pet.update_growth(self.care_stats);
-        Ok(())
+        Ok(self.apply_growth())
     }
 
-    pub fn play(&mut self, timestamp: Timestamp, day: Timestamp) -> Result<(), ActionError> {
+    pub fn play(
+        &mut self,
+        timestamp: Timestamp,
+        day: Timestamp,
+    ) -> Result<Option<EvolutionEvent>, ActionError> {
         self.daily_actions.reset_if_new_day(day);
         self.daily_report.reset_if_new_day(day);
         if self.pet.is_egg() {
@@ -125,8 +133,7 @@ impl GameState {
         self.care_stats.play_total = self.care_stats.play_total.saturating_add(1);
         self.daily_report
             .record_play(timestamp, PLAY_EXPERIENCE_GAIN, i32::from(PLAY_MOOD_GAIN));
-        self.pet.update_growth(self.care_stats);
-        Ok(())
+        Ok(self.apply_growth())
     }
 }
 

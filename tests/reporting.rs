@@ -210,6 +210,7 @@ fn saved_state(last_updated_at: u64) -> GameState {
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     }
 }
 

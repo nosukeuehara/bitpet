@@ -3,7 +3,8 @@ use bitpet::domain::evolution::GrowthStage;
 use bitpet::domain::expedition::ExpeditionType;
 use bitpet::domain::monster::SpeciesId;
 use bitpet::domain::{
-    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
+    CareStats, DailyActions, DailyReport, GameState, LoginState, PendingEvolution, Pet,
+    SAVE_VERSION,
 };
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
@@ -116,7 +117,137 @@ fn completed_expedition_applies_reward_and_clears_away_state() {
     assert_eq!(updated.pet.experience, 5);
     assert_eq!(updated.pet.status.mood, 77);
     assert_eq!(updated.daily_report.experience_gained, 5);
-    assert_eq!(loaded, updated);
+    assert_eq!(loaded, updated.state);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn expedition_completion_queues_evolution_without_changing_visible_species() {
+    let mut state = saved_state(3_600, GrowthStage::Stage1);
+    state.pet.experience = 15;
+    state
+        .start_expedition(3_600, 0, 3_600)
+        .expect("expedition should start");
+
+    state.complete_expedition_if_due(7_200);
+
+    assert!(state.expedition.is_none());
+    assert_eq!(state.pet.level, 3);
+    assert_eq!(state.pet.stage, GrowthStage::Stage1);
+    assert_eq!(state.pet.species_id, SpeciesId::Mofflet);
+    let pending = state
+        .pending_evolution
+        .expect("expedition reward should queue pending evolution");
+    assert_eq!(pending.from_species_id, SpeciesId::Mofflet);
+    assert_eq!(pending.to_species_id, SpeciesId::Fuzzard);
+}
+
+#[test]
+fn returning_status_resolves_pending_evolution_and_emits_event() {
+    let save_dir = test_save_dir("returning_status_resolves_pending_evolution_and_emits_event");
+    let mut repository = FileRepository::new(save_dir.clone());
+    let mut state = saved_state(3_600, GrowthStage::Stage1);
+    state.pet.experience = 15;
+    state
+        .start_expedition(3_600, 0, 3_600)
+        .expect("expedition should start");
+    repository.save(&state).expect("game should be saved");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(7_200),
+    );
+
+    let outcome = service.status().expect("status should complete expedition");
+    let loaded = FileRepository::new(save_dir.clone())
+        .load()
+        .expect("updated game should load");
+
+    let evolution = outcome
+        .evolution
+        .expect("returning status should emit evolution event");
+    assert_eq!(evolution.from_species_id, SpeciesId::Mofflet);
+    assert_eq!(evolution.to_species_id, SpeciesId::Fuzzard);
+    assert_eq!(outcome.state.pet.stage, GrowthStage::Stage2);
+    assert_eq!(outcome.state.pet.species_id, SpeciesId::Fuzzard);
+    assert!(outcome.state.pending_evolution.is_none());
+    assert_eq!(loaded, outcome.state);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn pending_evolution_survives_save_load_until_pet_facing_status() {
+    let save_dir = test_save_dir("pending_evolution_survives_save_load_until_pet_facing_status");
+    let mut repository = FileRepository::new(save_dir.clone());
+    let mut state = saved_state(3_600, GrowthStage::Stage1);
+    state.pet.experience = 15;
+    state
+        .start_expedition(3_600, 0, 3_600)
+        .expect("expedition should start");
+    state.complete_expedition_if_due(7_200);
+
+    repository
+        .save(&state)
+        .expect("pending game should be saved");
+    let loaded = repository.load().expect("pending game should load");
+
+    assert_eq!(loaded.pet.species_id, SpeciesId::Mofflet);
+    assert_eq!(
+        loaded
+            .pending_evolution
+            .expect("pending evolution should roundtrip")
+            .to_species_id,
+        SpeciesId::Fuzzard
+    );
+
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(7_200),
+    );
+    let outcome = service
+        .status()
+        .expect("pet-facing status should resolve pending evolution");
+
+    assert_eq!(outcome.state.pet.species_id, SpeciesId::Fuzzard);
+    assert!(outcome.evolution.is_some());
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn starting_expedition_after_pending_evolution_preserves_evolution_event() {
+    let save_dir = test_save_dir("starting_expedition_after_pending_evolution_preserves_event");
+    let mut repository = FileRepository::new(save_dir.clone());
+    let mut state = saved_state(7_200, GrowthStage::Stage1);
+    state.pet.level = 3;
+    state.pet.experience = 20;
+    state.pending_evolution = Some(PendingEvolution {
+        from_stage: GrowthStage::Stage1,
+        from_species_id: SpeciesId::Mofflet,
+        to_stage: GrowthStage::Stage2,
+        to_species_id: SpeciesId::Fuzzard,
+    });
+    repository.save(&state).expect("game should be saved");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(7_200),
+    );
+
+    let outcome = service
+        .start_expedition()
+        .expect("expedition should start after resolving pending evolution");
+    let loaded = FileRepository::new(save_dir.clone())
+        .load()
+        .expect("updated game should load");
+
+    let evolution = outcome
+        .evolution
+        .expect("go should preserve resolved evolution event");
+    assert_eq!(evolution.to_species_id, SpeciesId::Fuzzard);
+    assert_eq!(loaded.pet.species_id, SpeciesId::Fuzzard);
+    assert!(loaded.pending_evolution.is_none());
+    assert!(loaded.expedition.is_some());
 
     cleanup(save_dir);
 }
@@ -139,6 +270,7 @@ fn saved_state(last_updated_at: u64, stage: GrowthStage) -> GameState {
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     }
 }
 

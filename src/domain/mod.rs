@@ -9,6 +9,7 @@ pub mod status;
 pub mod time;
 
 pub use action::{CareStats, DailyActions};
+pub use evolution::{EvolutionEvent, PendingEvolution};
 pub use expedition::Expedition;
 pub use hatching::HatchingState;
 pub use monster::{MonsterFamily, SpeciesId};
@@ -17,7 +18,7 @@ pub use report::{DailyReport, LoginState};
 
 pub type Timestamp = u64;
 
-pub const SAVE_VERSION: u32 = 8;
+pub const SAVE_VERSION: u32 = 9;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameState {
@@ -30,6 +31,7 @@ pub struct GameState {
     pub login: LoginState,
     pub expedition: Option<Expedition>,
     pub hatching: Option<HatchingState>,
+    pub pending_evolution: Option<PendingEvolution>,
 }
 
 impl GameState {
@@ -49,7 +51,34 @@ impl GameState {
             login: LoginState::new(),
             expedition: None,
             hatching: Some(HatchingState::new(last_updated_at)),
+            pending_evolution: None,
         }
+    }
+
+    pub fn apply_growth(&mut self) -> Option<EvolutionEvent> {
+        if self.pending_evolution.is_some() {
+            return None;
+        }
+
+        self.pet.update_growth(self.care_stats)
+    }
+
+    pub fn queue_growth(&mut self) -> Option<PendingEvolution> {
+        if self.pending_evolution.is_some() {
+            return self.pending_evolution;
+        }
+
+        let event = self.pet.evolution_candidate(self.care_stats)?;
+        let pending = PendingEvolution::from(event);
+        self.pending_evolution = Some(pending);
+        Some(pending)
+    }
+
+    pub fn resolve_pending_evolution(&mut self) -> Option<EvolutionEvent> {
+        let pending = self.pending_evolution.take()?;
+        let event = EvolutionEvent::from(pending);
+        self.pet.apply_evolution(event);
+        Some(event)
     }
 }
 

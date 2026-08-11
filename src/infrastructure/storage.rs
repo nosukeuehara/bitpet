@@ -4,8 +4,8 @@ use crate::domain::expedition::{Expedition, ExpeditionType};
 use crate::domain::monster::{legacy_evolution_species, species_from_str, SpeciesId};
 use crate::domain::report::{ReportEvent, ReportEventKind};
 use crate::domain::{
-    CareStats, DailyActions, DailyReport, GameState, HatchingState, LoginState, Pet, Timestamp,
-    SAVE_VERSION,
+    CareStats, DailyActions, DailyReport, GameState, HatchingState, LoginState, PendingEvolution,
+    Pet, Timestamp, SAVE_VERSION,
 };
 use crate::infrastructure::filesystem;
 use serde::{Deserialize, Serialize};
@@ -127,7 +127,7 @@ pub fn state_from_json(contents: &str) -> ApplicationResult<GameState> {
     let version = raw_save_version(&raw)?;
 
     match version {
-        1..=7 => {
+        1..=8 => {
             let save: LegacySaveData =
                 serde_json::from_value(raw).map_err(|_| ApplicationError::InvalidSaveData)?;
             save.try_into()
@@ -157,6 +157,8 @@ struct CurrentSaveData {
     #[serde(default)]
     expedition: Option<SaveExpedition>,
     hatching: Option<SaveHatchingState>,
+    #[serde(default)]
+    pending_evolution: Option<SavePendingEvolution>,
     pet: CurrentSavePet,
 }
 
@@ -177,6 +179,8 @@ struct LegacySaveData {
     expedition: Option<SaveExpedition>,
     #[serde(default)]
     hatching: Option<SaveHatchingState>,
+    #[serde(default)]
+    pending_evolution: Option<SavePendingEvolution>,
     pet: LegacySavePet,
 }
 
@@ -257,6 +261,14 @@ struct SaveHatchingState {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct SavePendingEvolution {
+    from_stage: String,
+    from_species_id: String,
+    to_stage: String,
+    to_species_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct CurrentSavePet {
     name: String,
     stage: String,
@@ -318,6 +330,7 @@ impl From<&GameState> for CurrentSaveData {
             },
             expedition: state.expedition.map(SaveExpedition::from),
             hatching: state.hatching.map(SaveHatchingState::from),
+            pending_evolution: state.pending_evolution.map(SavePendingEvolution::from),
             pet: CurrentSavePet {
                 name: state.pet.name.clone(),
                 stage: state.pet.stage.as_str().to_string(),
@@ -341,6 +354,7 @@ impl TryFrom<CurrentSaveData> for GameState {
         }
 
         let expedition = save.expedition.map(TryInto::try_into).transpose()?;
+        let pending_evolution = save.pending_evolution.map(TryInto::try_into).transpose()?;
 
         let stage = parse_growth_stage(Some(save.pet.stage.as_str()))?;
         let hatching = parse_hatching(stage, save.hatching)?;
@@ -377,6 +391,7 @@ impl TryFrom<CurrentSaveData> for GameState {
             },
             expedition,
             hatching,
+            pending_evolution,
         })
     }
 }
@@ -417,6 +432,7 @@ impl TryFrom<LegacySaveData> for GameState {
         });
 
         let expedition = save.expedition.map(TryInto::try_into).transpose()?;
+        let pending_evolution = save.pending_evolution.map(TryInto::try_into).transpose()?;
 
         let stage = parse_growth_stage(save.pet.stage.as_deref())?;
         let hatching = parse_hatching(stage, save.hatching)?;
@@ -445,6 +461,7 @@ impl TryFrom<LegacySaveData> for GameState {
             login,
             expedition,
             hatching,
+            pending_evolution,
         })
     }
 }
@@ -570,6 +587,32 @@ impl TryFrom<SaveHatchingState> for HatchingState {
         Ok(Self {
             egg_created_at: hatching.egg_created_at,
             hatches_at: hatching.hatches_at,
+        })
+    }
+}
+
+impl From<PendingEvolution> for SavePendingEvolution {
+    fn from(pending: PendingEvolution) -> Self {
+        Self {
+            from_stage: pending.from_stage.as_str().to_string(),
+            from_species_id: pending.from_species_id.as_str().to_string(),
+            to_stage: pending.to_stage.as_str().to_string(),
+            to_species_id: pending.to_species_id.as_str().to_string(),
+        }
+    }
+}
+
+impl TryFrom<SavePendingEvolution> for PendingEvolution {
+    type Error = ApplicationError;
+
+    fn try_from(pending: SavePendingEvolution) -> Result<Self, Self::Error> {
+        Ok(Self {
+            from_stage: parse_growth_stage(Some(pending.from_stage.as_str()))?,
+            from_species_id: species_from_str(pending.from_species_id.as_str())
+                .ok_or(ApplicationError::InvalidSaveData)?,
+            to_stage: parse_growth_stage(Some(pending.to_stage.as_str()))?,
+            to_species_id: species_from_str(pending.to_species_id.as_str())
+                .ok_or(ApplicationError::InvalidSaveData)?,
         })
     }
 }

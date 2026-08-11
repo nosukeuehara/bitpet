@@ -1,9 +1,57 @@
-use crate::ascii::pets::pet_art;
+use crate::application::StatusOutcome;
+use crate::ascii::pets::{pet_art, species_art, DOOR_PET};
+use crate::cli::commands::HelpTopic;
 use crate::domain::action::{Action, ActionOutcome};
 use crate::domain::expedition::ExpeditionOutcome;
 use crate::domain::report::{ReportEvent, ReportEventKind};
-use crate::domain::{DailyReport, GameState, LoginState};
+use crate::domain::{DailyReport, EvolutionEvent, GameState, LoginState};
 use crate::infrastructure::clock::local_time_of_day;
+
+pub fn render_status_outcome(outcome: &StatusOutcome) -> String {
+    render_with_evolution(outcome.evolution, &outcome.state)
+}
+
+pub fn render_help(topic: Option<HelpTopic>) -> String {
+    match topic {
+        None => render_main_help(),
+        Some(HelpTopic::Status) => render_command_help(
+            "status",
+            "Show your BitPet",
+            "bitpet status",
+            "Displays your BitPet's current state.",
+        ),
+        Some(HelpTopic::Feed) => render_command_help(
+            "feed",
+            "Feed your BitPet",
+            "bitpet feed",
+            "Feeds your BitPet when it is home and hatched.",
+        ),
+        Some(HelpTopic::Play) => render_command_help(
+            "play",
+            "Play with your BitPet",
+            "bitpet play",
+            "Plays with your BitPet when it is home and hatched.",
+        ),
+        Some(HelpTopic::Go) => render_command_help(
+            "go",
+            "Send your BitPet on an expedition",
+            "bitpet go",
+            "Sends your BitPet on an expedition when expeditions are unlocked.",
+        ),
+        Some(HelpTopic::Report) => render_command_help(
+            "report",
+            "Show today's activity report",
+            "bitpet report",
+            "Shows today's feed, play, expedition, and event report.",
+        ),
+        Some(HelpTopic::Streak) => render_command_help(
+            "streak",
+            "Show your login streak",
+            "bitpet streak",
+            "Shows your current login streak.",
+        ),
+    }
+}
 
 pub fn render_status(state: &GameState) -> String {
     if state.pet.is_egg() {
@@ -21,9 +69,9 @@ pub fn render_status(state: &GameState) -> String {
 
     if let Some(expedition) = state.expedition {
         return format!(
-            "{}\n\n{} is exploring.\n\nReturns in:\n{}",
-            pet_art(&state.pet),
-            state.pet.name,
+            "{}\n\nOut now...\nBack at {}\n\nReturns in:\n{}",
+            DOOR_PET,
+            render_time_of_day(expedition.returns_at),
             render_duration(expedition.returns_at.saturating_sub(state.last_updated_at))
         );
     }
@@ -46,10 +94,16 @@ pub fn render_status(state: &GameState) -> String {
 }
 
 pub fn render_expedition_started(outcome: &ExpeditionOutcome) -> String {
-    format!(
+    let message = format!(
         "Mochi went exploring.\n\nExpected return:\n{}",
         render_time_of_day(outcome.returns_at)
-    )
+    );
+
+    if let Some(event) = outcome.evolution {
+        return format!("{}\n\n{message}", render_evolution_effect(event));
+    }
+
+    message
 }
 
 pub fn render_expedition_locked() -> String {
@@ -75,7 +129,10 @@ pub fn render_action_outcome(outcome: &ActionOutcome) -> String {
         Action::Go => "Mochi went exploring.",
     };
 
-    format!("{message}\n\n{}", render_status(&outcome.state))
+    format!(
+        "{message}\n\n{}",
+        render_with_evolution(outcome.evolution, &outcome.state)
+    )
 }
 
 pub fn render_action_limit_reached(action: Action) -> String {
@@ -111,6 +168,41 @@ pub fn render_streak(login: &LoginState) -> String {
     format!("Login streak\n\n{} day(s)", login.streak)
 }
 
+fn render_main_help() -> String {
+    "BitPet - a tiny CLI pet that grows while you work
+
+Usage:
+  bitpet [COMMAND]
+
+Commands:
+  status    Show your BitPet
+  feed      Feed your BitPet
+  play      Play with your BitPet
+  go        Send your BitPet on an expedition
+  report    Show today's activity report
+  streak    Show your login streak
+  help      Show help for a command
+
+Options:
+  -h, --help       Show help
+  -V, --version    Show version"
+        .to_string()
+}
+
+fn render_command_help(command: &str, description: &str, usage: &str, details: &str) -> String {
+    format!(
+        "{description}
+
+Usage:
+  {usage}
+
+{details}
+
+Options:
+  -h, --help    Show help for bitpet {command}"
+    )
+}
+
 fn render_report_event(event: &ReportEvent) -> String {
     let (hour, minute) = local_time_or_utc(event.timestamp);
     let message = match event.kind {
@@ -122,6 +214,31 @@ fn render_report_event(event: &ReportEvent) -> String {
     };
 
     format!("{hour:02}:{minute:02} {message}")
+}
+
+pub fn render_evolution_effect(event: EvolutionEvent) -> String {
+    let old_art = species_art(event.from_species_id);
+    let new_art = species_art(event.to_species_id);
+    let clear = "\x1B[2J\x1B[H";
+    let blank = "\n\n\n\n\n";
+
+    format!(
+        "{clear}{old_art}\n{clear}{blank}\n{clear}{old_art}\n{clear}{blank}\n{clear}{new_art}\n\nYour BitPet evolved!\n{} -> {}",
+        event.from_species_id.display_name(),
+        event.to_species_id.display_name()
+    )
+}
+
+fn render_with_evolution(evolution: Option<EvolutionEvent>, state: &GameState) -> String {
+    if let Some(event) = evolution {
+        return format!(
+            "{}\n\n{}",
+            render_evolution_effect(event),
+            render_status(state)
+        );
+    }
+
+    render_status(state)
 }
 
 fn render_time_of_day(timestamp: u64) -> String {
@@ -152,11 +269,16 @@ fn render_duration(seconds: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{render_expedition_started, render_report, render_status, render_streak};
+    use super::{
+        render_evolution_effect, render_expedition_started, render_help, render_report,
+        render_status, render_streak,
+    };
+    use crate::cli::commands::HelpTopic;
     use crate::domain::evolution::GrowthStage;
     use crate::domain::expedition::{Expedition, ExpeditionOutcome, ExpeditionType};
+    use crate::domain::monster::SpeciesId;
     use crate::domain::report::{DailyReport, LoginState};
-    use crate::domain::GameState;
+    use crate::domain::{EvolutionEvent, GameState};
 
     #[test]
     fn renders_default_pet_status() {
@@ -209,6 +331,7 @@ mod tests {
     fn renders_away_status() {
         let mut state = GameState::new(3_600);
         state.pet.stage = GrowthStage::Stage1;
+        state.pet.species_id = SpeciesId::Mofflet;
         state.hatching = None;
         state.expedition = Some(Expedition {
             expedition_type: ExpeditionType::Explore,
@@ -219,9 +342,13 @@ mod tests {
 
         let output = render_status(&state);
 
-        assert!(output.contains("Mochi is exploring."));
+        assert!(output.contains("+------+"));
+        assert!(output.contains("Out now..."));
+        assert!(output.contains("Back at"));
         assert!(output.contains("Returns in:"));
         assert!(output.contains("1h 0m"));
+        assert!(!output.contains("Mofflet"));
+        assert!(!output.contains("Family"));
     }
 
     #[test]
@@ -230,9 +357,50 @@ mod tests {
             expedition_type: ExpeditionType::Explore,
             started_at: 3_600,
             returns_at: 7_200,
+            evolution: None,
         });
 
         assert!(output.contains("Mochi went exploring."));
         assert!(output.contains("Expected return:"));
+    }
+
+    #[test]
+    fn renders_main_help_with_commands_and_options() {
+        let output = render_help(None);
+
+        assert!(output.contains("BitPet - a tiny CLI pet"));
+        assert!(output.contains("Usage:"));
+        assert!(output.contains("status    Show your BitPet"));
+        assert!(output.contains("feed      Feed your BitPet"));
+        assert!(output.contains("play      Play with your BitPet"));
+        assert!(output.contains("go        Send your BitPet on an expedition"));
+        assert!(output.contains("report    Show today's activity report"));
+        assert!(output.contains("streak    Show your login streak"));
+        assert!(output.contains("-h, --help"));
+        assert!(output.contains("-V, --version"));
+    }
+
+    #[test]
+    fn renders_subcommand_help() {
+        let output = render_help(Some(HelpTopic::Go));
+
+        assert!(output.contains("Send your BitPet on an expedition"));
+        assert!(output.contains("Usage:"));
+        assert!(output.contains("bitpet go"));
+        assert!(output.contains("-h, --help"));
+    }
+
+    #[test]
+    fn renders_evolution_effect_without_waiting_for_tty() {
+        let output = render_evolution_effect(EvolutionEvent {
+            from_stage: GrowthStage::Baby,
+            from_species_id: SpeciesId::Baby,
+            to_stage: GrowthStage::Stage1,
+            to_species_id: SpeciesId::Mofflet,
+        });
+
+        assert!(output.contains("\x1B[2J\x1B[H"));
+        assert!(output.contains("Your BitPet evolved!"));
+        assert!(output.contains("Baby -> Mofflet"));
     }
 }

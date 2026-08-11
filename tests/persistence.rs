@@ -4,7 +4,8 @@ use bitpet::domain::expedition::ExpeditionType;
 use bitpet::domain::monster::{MonsterFamily, SpeciesId};
 use bitpet::domain::report::ReportEventKind;
 use bitpet::domain::{
-    CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
+    CareStats, DailyActions, DailyReport, GameState, LoginState, PendingEvolution, Pet,
+    SAVE_VERSION,
 };
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{
@@ -46,7 +47,7 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 8"#));
+    assert!(contents.contains(r#""version": 9"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""daily_actions""#));
     assert!(contents.contains(r#""care_stats""#));
@@ -78,6 +79,7 @@ fn loads_saved_game() {
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -102,6 +104,7 @@ fn save_then_load_keeps_pet_main_state() {
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -130,6 +133,7 @@ fn species_id_survives_save_load_roundtrip() {
         login: LoginState::new(),
         expedition: None,
         hatching: None,
+        pending_evolution: None,
     };
     state.pet.stage = GrowthStage::Final;
     state.pet.species_id = SpeciesId::Starwing;
@@ -139,6 +143,42 @@ fn species_id_survives_save_load_roundtrip() {
 
     assert_eq!(loaded.pet.stage, GrowthStage::Final);
     assert_eq!(loaded.pet.species_id, SpeciesId::Starwing);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn pending_evolution_survives_save_load_roundtrip() {
+    let save_dir = test_save_dir("pending_evolution_survives_save_load_roundtrip");
+    let mut repository = FileRepository::new(save_dir.clone());
+    let mut state = GameState {
+        version: SAVE_VERSION,
+        pet: Pet::new("Mochi".to_string(), 3, 20, 72, 81, 64),
+        last_updated_at: 7_200,
+        daily_actions: DailyActions::new(0),
+        care_stats: CareStats::new(),
+        daily_report: DailyReport::new(0),
+        login: LoginState::new(),
+        expedition: None,
+        hatching: None,
+        pending_evolution: Some(PendingEvolution {
+            from_stage: GrowthStage::Stage1,
+            from_species_id: SpeciesId::Mofflet,
+            to_stage: GrowthStage::Stage2,
+            to_species_id: SpeciesId::Fuzzard,
+        }),
+    };
+    state.pet.stage = GrowthStage::Stage1;
+    state.pet.species_id = SpeciesId::Mofflet;
+
+    repository.save(&state).expect("game should be saved");
+    let json =
+        fs::read_to_string(save_dir.join("save.json")).expect("pending save should be readable");
+    let loaded = repository.load().expect("game should be loaded");
+
+    assert!(json.contains(r#""pending_evolution""#));
+    assert_eq!(loaded.pending_evolution, state.pending_evolution);
+    assert_eq!(loaded.pet.species_id, SpeciesId::Mofflet);
 
     cleanup(save_dir);
 }
@@ -554,14 +594,14 @@ fn assert_v0_1_fixture_migrates(test_name: &str, fixture: &str) {
 
     let saved_json =
         fs::read_to_string(save_dir.join("save.json")).expect("migrated save should exist");
-    assert!(saved_json.contains(r#""version": 8"#));
+    assert!(saved_json.contains(r#""version": 9"#));
     assert!(saved_json.contains(r#""species_id": "mofflet""#));
     assert!(!saved_json.contains(r#""evolution""#));
 
     let roundtripped = FileRepository::new(save_dir.clone())
         .load()
         .expect("migrated save should roundtrip");
-    assert_eq!(roundtripped, migrated);
+    assert_eq!(roundtripped, migrated.state);
 
     cleanup(save_dir);
 }

@@ -2,13 +2,27 @@ use crate::application::result::ApplicationResult;
 use crate::application::ApplicationError;
 use crate::domain::action::{Action, ActionError, ActionOutcome};
 use crate::domain::expedition::{ExpeditionError, ExpeditionOutcome};
-use crate::domain::{time, DailyReport, GameState, LoginState, SAVE_VERSION};
+use crate::domain::{time, DailyReport, EvolutionEvent, GameState, LoginState, SAVE_VERSION};
 use crate::infrastructure::clock::{Clock, SystemClock};
 use crate::infrastructure::storage::GameRepository;
 
 pub struct GameService<R, C = SystemClock> {
     repository: R,
     clock: C,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StatusOutcome {
+    pub state: GameState,
+    pub evolution: Option<EvolutionEvent>,
+}
+
+impl std::ops::Deref for StatusOutcome {
+    type Target = GameState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
 }
 
 impl<R> GameService<R, SystemClock>
@@ -33,9 +47,8 @@ where
         self.repository
     }
 
-    pub fn status(&mut self) -> ApplicationResult<GameState> {
-        let state = self.load_update_and_save()?;
-        Ok(state)
+    pub fn status(&mut self) -> ApplicationResult<StatusOutcome> {
+        self.load_update_and_save(true)
     }
 
     pub fn feed(&mut self) -> ApplicationResult<ActionOutcome> {
@@ -49,49 +62,62 @@ where
     pub fn start_expedition(&mut self) -> ApplicationResult<ExpeditionOutcome> {
         let now = self.clock.now();
         let day = self.clock.day(now);
-        let mut state = self.load_and_update_time(now)?;
-        let outcome = state
+        let (mut state, evolution) = self.load_and_update_time(now, true)?;
+        let mut outcome = state
             .start_expedition(now, day, now)
             .map_err(application_expedition_error)?;
+        outcome.evolution = evolution;
 
         self.repository.save(&state)?;
         Ok(outcome)
     }
 
     pub fn report(&mut self) -> ApplicationResult<DailyReport> {
-        let state = self.load_update_and_save()?;
+        let state = self.load_update_and_save(false)?.state;
         Ok(state.daily_report)
     }
 
     pub fn streak(&mut self) -> ApplicationResult<LoginState> {
-        let state = self.load_update_and_save()?;
+        let state = self.load_update_and_save(false)?.state;
         Ok(state.login)
     }
 
     fn perform_action(&mut self, action: Action) -> ApplicationResult<ActionOutcome> {
         let now = self.clock.now();
         let day = self.clock.day(now);
-        let mut state = self.load_and_update_time(now)?;
+        let (mut state, pending_evolution) = self.load_and_update_time(now, true)?;
 
-        match action {
+        let action_evolution = match action {
             Action::Feed => state.feed(now, day),
             Action::Play => state.play(now, day),
             Action::Go => return Err(ApplicationError::InvalidAction),
         }
         .map_err(application_action_error)?;
 
+        let evolution = action_evolution.or(pending_evolution);
         self.repository.save(&state)?;
-        Ok(ActionOutcome { action, state })
+        Ok(ActionOutcome {
+            action,
+            state,
+            evolution,
+        })
     }
 
-    fn load_update_and_save(&mut self) -> ApplicationResult<GameState> {
+    fn load_update_and_save(
+        &mut self,
+        resolve_evolution: bool,
+    ) -> ApplicationResult<StatusOutcome> {
         let now = self.clock.now();
-        let state = self.load_and_update_time(now)?;
+        let (state, evolution) = self.load_and_update_time(now, resolve_evolution)?;
         self.repository.save(&state)?;
-        Ok(state)
+        Ok(StatusOutcome { state, evolution })
     }
 
-    fn load_and_update_time(&mut self, now: u64) -> ApplicationResult<GameState> {
+    fn load_and_update_time(
+        &mut self,
+        now: u64,
+        resolve_evolution: bool,
+    ) -> ApplicationResult<(GameState, Option<EvolutionEvent>)> {
         let day = self.clock.day(now);
         let mut state = if self.repository.exists() {
             self.repository.load()?
@@ -145,13 +171,22 @@ where
             state.hatching = None;
         }
 
+        if loaded_version < 9 {
+            state.pending_evolution = None;
+        }
+
         if loaded_version < SAVE_VERSION {
             state.version = SAVE_VERSION;
         }
         state.record_login(day, now);
         state.complete_expedition_if_due(now);
+        let evolution = if resolve_evolution {
+            state.resolve_pending_evolution()
+        } else {
+            None
+        };
 
-        Ok(state)
+        Ok((state, evolution))
     }
 }
 
