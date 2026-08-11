@@ -50,6 +50,12 @@ pub fn render_help(topic: Option<HelpTopic>) -> String {
             "bitpet streak",
             "Shows your current login streak.",
         ),
+        Some(HelpTopic::Update) => render_command_help(
+            "update",
+            "Update BitPet",
+            "bitpet update [--check]",
+            "Checks GitHub Releases for a newer stable Native CLI release, or installs it.",
+        ),
     }
 }
 
@@ -181,12 +187,29 @@ Commands:
   go        Send your BitPet on an expedition
   report    Show today's activity report
   streak    Show your login streak
+  update    Update BitPet
   help      Show help for a command
 
 Options:
   -h, --help       Show help
   -V, --version    Show version"
         .to_string()
+}
+
+pub fn render_update_up_to_date(current: &str) -> String {
+    format!("BitPet is already up to date.\n{current}")
+}
+
+pub fn render_update_available(current: &str, latest: &str) -> String {
+    format!(
+        "Current: {current}\nLatest : {latest}\n\nUpdate available.\nRun `bitpet update` to install."
+    )
+}
+
+pub fn render_update_success(previous: &str, current: &str) -> String {
+    format!(
+        "Updating BitPet...\n\n{previous} -> {current}\n\nDownloading...\nVerifying...\nInstalling...\n\nBitPet updated successfully."
+    )
 }
 
 fn render_command_help(command: &str, description: &str, usage: &str, details: &str) -> String {

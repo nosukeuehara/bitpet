@@ -8,6 +8,7 @@ pub enum Command {
     Go,
     Report,
     Streak,
+    Update { check_only: bool },
     Help(Option<HelpTopic>),
     Version,
 }
@@ -20,6 +21,7 @@ pub enum HelpTopic {
     Go,
     Report,
     Streak,
+    Update,
 }
 
 impl Command {
@@ -33,6 +35,9 @@ impl Command {
             [flag] if is_help_flag(flag) => Self::Help(None),
             [flag] if is_version_flag(flag) => Self::Version,
             [command] => command_from_str(command)?,
+            [command, flag] if command == "update" && flag == "--check" => {
+                Self::Update { check_only: true }
+            }
             [command, flag] if command == "help" && is_help_flag(flag) => Self::Help(None),
             [command, flag] if is_help_flag(flag) => {
                 Self::Help(Some(help_topic_from_str(command)?))
@@ -53,6 +58,7 @@ fn command_from_str(command: &str) -> Result<Command, CliError> {
         "go" => Ok(Command::Go),
         "report" => Ok(Command::Report),
         "streak" => Ok(Command::Streak),
+        "update" => Ok(Command::Update { check_only: false }),
         "help" => Ok(Command::Help(None)),
         "--version" | "-V" => Ok(Command::Version),
         unknown => Err(CliError::UnknownCommand(unknown.to_string())),
@@ -67,6 +73,7 @@ fn help_topic_from_str(command: &str) -> Result<HelpTopic, CliError> {
         "go" => Ok(HelpTopic::Go),
         "report" => Ok(HelpTopic::Report),
         "streak" => Ok(HelpTopic::Streak),
+        "update" => Ok(HelpTopic::Update),
         unknown => Err(CliError::UnknownCommand(unknown.to_string())),
     }
 }
@@ -118,6 +125,10 @@ mod tests {
             Command::parse(["help".to_string(), "go".to_string()]),
             Ok(Command::Help(Some(HelpTopic::Go)))
         );
+        assert_eq!(
+            Command::parse(["update".to_string(), "--help".to_string()]),
+            Ok(Command::Help(Some(HelpTopic::Update)))
+        );
     }
 
     #[test]
@@ -127,5 +138,17 @@ mod tests {
             Ok(Command::Version)
         );
         assert_eq!(Command::parse(["-V".to_string()]), Ok(Command::Version));
+    }
+
+    #[test]
+    fn parses_update_commands() {
+        assert_eq!(
+            Command::parse(["update".to_string()]),
+            Ok(Command::Update { check_only: false })
+        );
+        assert_eq!(
+            Command::parse(["update".to_string(), "--check".to_string()]),
+            Ok(Command::Update { check_only: true })
+        );
     }
 }

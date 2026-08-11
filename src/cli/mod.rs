@@ -31,6 +31,7 @@ where
     let output = match command {
         Command::Help(topic) => renderer::render_help(topic),
         Command::Version => env!("CARGO_PKG_VERSION").to_string(),
+        Command::Update { check_only } => run_update_command(check_only)?,
         command => run_game_command(command)?,
     };
 
@@ -70,8 +71,36 @@ fn run_game_command(command: Command) -> Result<String, Box<dyn Error>> {
         },
         Command::Report => renderer::render_report(&service.report()?),
         Command::Streak => renderer::render_streak(&service.streak()?),
-        Command::Help(_) | Command::Version => unreachable!("handled before repository access"),
+        Command::Update { .. } | Command::Help(_) | Command::Version => {
+            unreachable!("handled before repository access")
+        }
     };
 
     Ok(output)
+}
+
+#[cfg(feature = "self_update")]
+fn run_update_command(check_only: bool) -> Result<String, Box<dyn Error>> {
+    use crate::infrastructure::self_update::{self, UpdateOutcome};
+
+    let outcome = if check_only {
+        self_update::check_for_updates(env!("CARGO_PKG_VERSION"))?
+    } else {
+        self_update::update(env!("CARGO_PKG_VERSION"))?
+    };
+
+    Ok(match outcome {
+        UpdateOutcome::UpToDate { current } => renderer::render_update_up_to_date(&current),
+        UpdateOutcome::Available { current, latest } => {
+            renderer::render_update_available(&current, &latest)
+        }
+        UpdateOutcome::Updated { previous, current } => {
+            renderer::render_update_success(&previous, &current)
+        }
+    })
+}
+
+#[cfg(not(feature = "self_update"))]
+fn run_update_command(_check_only: bool) -> Result<String, Box<dyn Error>> {
+    Ok("Self-update is available only in native CLI builds.".to_string())
 }
