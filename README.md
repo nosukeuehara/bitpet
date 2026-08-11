@@ -2,7 +2,7 @@
 
 BitPet は Rust で実装する小さな CLI 育成ゲームです。
 
-現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップと最初の進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。リリース自動化、Wasm 出力はまだ未実装です。
+現在の実装は、基本的なゲーム開始・復元ループ、起動していない間の時間経過反映、`feed` / `play` による世話、レベルアップと最初の進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しいペットを作成して `save.json` に保存し、2 回目以降は保存済みのペット状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
 
 ## コンセプト
 
@@ -43,7 +43,6 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - Stage 2 以降の成長
 - 複雑な進化ツリー
 - Explore 以外のお出かけ種類
-- Native CLI のリリース workflow
 - Web UI
 
 ## CLI の利用イメージ
@@ -140,6 +139,15 @@ GitHub Release が公開されている場合は、自分の OS / CPU に合う 
 - `bitpet-vX.Y.Z-x86_64-apple-darwin.tar.gz`
 - `bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`
 - `bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip`
+
+v0.1.0 の場合は `vX.Y.Z` を `v0.1.0` に読み替えてください。
+
+対応 OS / target:
+
+- macOS Apple Silicon: `aarch64-apple-darwin`
+- macOS Intel: `x86_64-apple-darwin`
+- Linux x86_64: `x86_64-unknown-linux-gnu`
+- Windows x86_64: `x86_64-pc-windows-msvc`
 
 macOS / Linux:
 
@@ -289,6 +297,12 @@ localStorage.setItem("bitpet.save", bitpet.status(now));
 ```
 
 Native 版は filesystem 上の `save.json` を直接読み書きします。Wasm 版は filesystem を使わず、呼び出し側が `save_json()` や各コマンドの戻り値をブラウザ storage へ保存します。
+
+## ライセンス
+
+BitPet は MIT License で配布します。詳細は [LICENSE](LICENSE) を参照してください。
+
+配布 archive には Rust 依存 crate のライセンス概要として [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt) も同梱します。
 
 ## 詳細設計書
 

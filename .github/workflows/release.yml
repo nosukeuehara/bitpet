@@ -61,6 +61,8 @@ jobs:
           mkdir -p "dist/${package}"
           cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/${package}/"
           cp README.md "dist/${package}/"
+          cp LICENSE "dist/${package}/"
+          cp THIRD_PARTY_LICENSES.txt "dist/${package}/"
           tar -czf "dist/${package}.tar.gz" -C dist "${package}"
           shasum -a 256 "dist/${package}.tar.gz" > "dist/${package}.tar.gz.sha256"
 
@@ -73,7 +75,9 @@ jobs:
           New-Item -ItemType Directory -Path "dist/$package" | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/$package/"
           Copy-Item "README.md" "dist/$package/"
-          Compress-Archive -Path "dist/$package/*" -DestinationPath "dist/$package.zip"
+          Copy-Item "LICENSE" "dist/$package/"
+          Copy-Item "THIRD_PARTY_LICENSES.txt" "dist/$package/"
+          Compress-Archive -Path "dist/$package" -DestinationPath "dist/$package.zip"
           (Get-FileHash "dist/$package.zip" -Algorithm SHA256).Hash.ToLower() + "  $package.zip" | Out-File -Encoding ascii "dist/$package.zip.sha256"
 
       - name: Upload packaged artifact
@@ -93,6 +97,9 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -102,6 +109,7 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: |
             dist/*.tar.gz
             dist/*.tar.gz.sha256
