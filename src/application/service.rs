@@ -1,6 +1,7 @@
 use crate::application::result::ApplicationResult;
 use crate::application::ApplicationError;
 use crate::domain::action::{Action, ActionError, ActionOutcome};
+use crate::domain::expedition::{ExpeditionError, ExpeditionOutcome};
 use crate::domain::{time, DailyReport, GameState, LoginState, SAVE_VERSION};
 use crate::infrastructure::clock::{Clock, SystemClock};
 use crate::infrastructure::storage::GameRepository;
@@ -41,6 +42,17 @@ where
         self.perform_action(Action::Play)
     }
 
+    pub fn start_expedition(&mut self) -> ApplicationResult<ExpeditionOutcome> {
+        let now = self.clock.now();
+        let mut state = self.load_and_update_time(now)?;
+        let outcome = state
+            .start_expedition(now, now)
+            .map_err(application_expedition_error)?;
+
+        self.repository.save(&state)?;
+        Ok(outcome)
+    }
+
     pub fn report(&mut self) -> ApplicationResult<DailyReport> {
         let state = self.load_update_and_save()?;
         Ok(state.daily_report)
@@ -58,7 +70,7 @@ where
         match action {
             Action::Feed => state.feed(now),
             Action::Play => state.play(now),
-            Action::Go => Ok(()),
+            Action::Go => unreachable!("go is handled by start_expedition"),
         }
         .map_err(application_action_error)?;
 
@@ -107,10 +119,15 @@ where
             state.daily_report.reset_if_new_day(day);
         }
 
+        if loaded_version < 6 {
+            state.expedition = None;
+        }
+
         if loaded_version < SAVE_VERSION {
             state.version = SAVE_VERSION;
         }
         state.record_login(day, now);
+        state.complete_expedition_if_due(now);
 
         Ok(state)
     }
@@ -119,5 +136,13 @@ where
 fn application_action_error(error: ActionError) -> ApplicationError {
     match error {
         ActionError::DailyLimitReached(action) => ApplicationError::ActionLimitReached(action),
+        ActionError::PetAway => ApplicationError::PetAway,
+    }
+}
+
+fn application_expedition_error(error: ExpeditionError) -> ApplicationError {
+    match error {
+        ExpeditionError::Locked => ApplicationError::ExpeditionLocked,
+        ExpeditionError::AlreadyAway => ApplicationError::PetAway,
     }
 }

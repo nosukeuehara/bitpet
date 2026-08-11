@@ -18,6 +18,7 @@ pub enum Action {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionError {
     DailyLimitReached(Action),
+    PetAway,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,6 +76,10 @@ impl GameState {
         let day = crate::domain::time::day_index(timestamp);
         self.daily_actions.reset_if_new_day(day);
         self.daily_report.reset_if_new_day(day);
+        if self.expedition.is_some() {
+            return Err(ActionError::PetAway);
+        }
+
         if self.daily_actions.feed_count >= DAILY_ACTION_LIMIT {
             return Err(ActionError::DailyLimitReached(Action::Feed));
         }
@@ -98,6 +103,10 @@ impl GameState {
         let day = crate::domain::time::day_index(timestamp);
         self.daily_actions.reset_if_new_day(day);
         self.daily_report.reset_if_new_day(day);
+        if self.expedition.is_some() {
+            return Err(ActionError::PetAway);
+        }
+
         if self.daily_actions.play_count >= DAILY_ACTION_LIMIT {
             return Err(ActionError::DailyLimitReached(Action::Play));
         }

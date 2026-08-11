@@ -1,9 +1,19 @@
 use crate::ascii::pets::pet_art;
 use crate::domain::action::{Action, ActionOutcome};
+use crate::domain::expedition::ExpeditionOutcome;
 use crate::domain::report::{ReportEvent, ReportEventKind};
 use crate::domain::{DailyReport, GameState, LoginState};
 
 pub fn render_status(state: &GameState) -> String {
+    if let Some(expedition) = state.expedition {
+        return format!(
+            "{}\n\n{} is exploring.\n\nReturns in:\n{}",
+            pet_art(&state.pet),
+            state.pet.name,
+            render_duration(expedition.returns_at.saturating_sub(state.last_updated_at))
+        );
+    }
+
     let pet = &state.pet;
 
     format!(
@@ -19,6 +29,21 @@ pub fn render_status(state: &GameState) -> String {
     )
 }
 
+pub fn render_expedition_started(outcome: &ExpeditionOutcome) -> String {
+    format!(
+        "Mochi went exploring.\n\nExpected return:\n{}",
+        render_time_of_day(outcome.returns_at)
+    )
+}
+
+pub fn render_expedition_locked() -> String {
+    "Mochi is not ready to explore yet.\n\nReach Stage 1 first.".to_string()
+}
+
+pub fn render_pet_away() -> String {
+    "Mochi is exploring.\n\nPlease wait until Mochi returns.".to_string()
+}
+
 pub fn render_not_implemented(command: &str) -> String {
     format!("{command} is not implemented yet.")
 }
@@ -27,7 +52,7 @@ pub fn render_action_outcome(outcome: &ActionOutcome) -> String {
     let message = match outcome.action {
         Action::Feed => "Mochi ate a meal.",
         Action::Play => "You played with Mochi.",
-        Action::Go => "go is not implemented yet.",
+        Action::Go => "Mochi went exploring.",
     };
 
     format!("{message}\n\n{}", render_status(&outcome.state))
@@ -74,14 +99,35 @@ fn render_report_event(event: &ReportEvent) -> String {
         ReportEventKind::Login => "Checked in",
         ReportEventKind::Feed => "Fed Mochi",
         ReportEventKind::Play => "Played with Mochi",
+        ReportEventKind::ExpeditionStarted => "Went exploring",
+        ReportEventKind::ExpeditionCompleted => "Came home",
     };
 
     format!("{hour:02}:{minute:02} {message}")
 }
 
+fn render_time_of_day(timestamp: u64) -> String {
+    let seconds_of_day = timestamp % 86_400;
+    let hour = seconds_of_day / 3_600;
+    let minute = seconds_of_day % 3_600 / 60;
+    format!("{hour:02}:{minute:02}")
+}
+
+fn render_duration(seconds: u64) -> String {
+    let hours = seconds / 3_600;
+    let minutes = seconds % 3_600 / 60;
+
+    if hours > 0 {
+        format!("{hours}h {minutes}m")
+    } else {
+        format!("{minutes}m")
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{render_report, render_status, render_streak};
+    use super::{render_expedition_started, render_report, render_status, render_streak};
+    use crate::domain::expedition::{Expedition, ExpeditionOutcome, ExpeditionType};
     use crate::domain::report::{DailyReport, LoginState};
     use crate::domain::GameState;
 
@@ -119,5 +165,35 @@ mod tests {
 
         assert!(output.contains("Login streak"));
         assert!(output.contains("3 day(s)"));
+    }
+
+    #[test]
+    fn renders_away_status() {
+        let mut state = GameState::new(3_600);
+        state.expedition = Some(Expedition {
+            expedition_type: ExpeditionType::Explore,
+            started_at: 3_600,
+            returns_at: 7_200,
+            seed: 3_600,
+        });
+
+        let output = render_status(&state);
+
+        assert!(output.contains("Mochi is exploring."));
+        assert!(output.contains("Returns in:"));
+        assert!(output.contains("1h 0m"));
+    }
+
+    #[test]
+    fn renders_expedition_start() {
+        let output = render_expedition_started(&ExpeditionOutcome {
+            expedition_type: ExpeditionType::Explore,
+            started_at: 3_600,
+            returns_at: 7_200,
+        });
+
+        assert!(output.contains("Mochi went exploring."));
+        assert!(output.contains("Expected return:"));
+        assert!(output.contains("02:00"));
     }
 }

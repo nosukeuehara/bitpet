@@ -130,6 +130,7 @@ fn saved_state(
         },
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
+        expedition: None,
     }
 }
 

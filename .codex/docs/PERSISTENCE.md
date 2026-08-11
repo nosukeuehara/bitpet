@@ -40,7 +40,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 5,
+  "version": 6,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
@@ -76,6 +76,12 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
   "login": {
     "last_login_day": 20370,
     "streak": 3
+  },
+  "expedition": {
+    "expedition_type": "Explore",
+    "started_at": 1760000000,
+    "returns_at": 1760003600,
+    "seed": 1760000000
   },
   "pet": {
     "name": "Mochi",
@@ -117,6 +123,10 @@ Phase 5では、`version: 1` から `version: 3` の既存saveに `care_stats` �
 `login` は連続ログイン日数と最後にログインしたUnix epoch日数を保存する。
 
 Phase 6では、`version: 1` から `version: 4` の既存saveに `daily_report` や `login` が存在しない場合、読み込み時に補完して `version: 5` として保存し直す。
+
+`expedition` は外出中の状態を保存する。外出中でなければ `null` とする。
+
+Phase 7では、`version: 1` から `version: 5` の既存saveに `expedition` が存在しない場合、外出していない状態として補完して `version: 6` として保存し直す。
 
 **---**
 

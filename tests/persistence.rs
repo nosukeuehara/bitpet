@@ -37,12 +37,13 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 5"#));
+    assert!(contents.contains(r#""version": 6"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""daily_actions""#));
     assert!(contents.contains(r#""care_stats""#));
     assert!(contents.contains(r#""daily_report""#));
     assert!(contents.contains(r#""login""#));
+    assert!(contents.contains(r#""expedition": null"#));
     assert!(contents.contains(r#""stage": "Baby""#));
     assert!(contents.contains(r#""evolution": "Baby""#));
     assert!(contents.contains(r#""name": "Mochi""#));
@@ -62,6 +63,7 @@ fn loads_saved_game() {
         care_stats: CareStats::new(),
         daily_report: DailyReport::new(0),
         login: LoginState::new(),
+        expedition: None,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -84,6 +86,7 @@ fn save_then_load_keeps_pet_main_state() {
         care_stats: CareStats::new(),
         daily_report: DailyReport::new(0),
         login: LoginState::new(),
+        expedition: None,
     };
 
     repository.save(&state).expect("game should be saved");

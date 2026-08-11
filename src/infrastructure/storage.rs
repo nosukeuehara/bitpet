@@ -1,5 +1,6 @@
 use crate::application::{ApplicationError, ApplicationResult};
 use crate::domain::evolution::{EvolutionKind, GrowthStage};
+use crate::domain::expedition::{Expedition, ExpeditionType};
 use crate::domain::report::{ReportEvent, ReportEventKind};
 use crate::domain::{
     CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, Timestamp, SAVE_VERSION,
@@ -129,6 +130,7 @@ struct SaveData {
     care_stats: Option<SaveCareStats>,
     daily_report: Option<SaveDailyReport>,
     login: Option<SaveLoginState>,
+    expedition: Option<SaveExpedition>,
     pet: SavePet,
 }
 
@@ -166,6 +168,14 @@ struct SaveReportEvent {
 struct SaveLoginState {
     last_login_day: Option<Timestamp>,
     streak: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct SaveExpedition {
+    expedition_type: String,
+    started_at: Timestamp,
+    returns_at: Timestamp,
+    seed: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -212,6 +222,7 @@ impl From<&GameState> for SaveData {
                 last_login_day: state.login.last_login_day,
                 streak: state.login.streak,
             }),
+            expedition: state.expedition.map(SaveExpedition::from),
             pet: SavePet {
                 name: state.pet.name.clone(),
                 stage: Some(state.pet.stage.as_str().to_string()),
@@ -281,6 +292,8 @@ impl TryFrom<SaveData> for GameState {
             streak: login.streak,
         });
 
+        let expedition = save.expedition.map(TryInto::try_into).transpose()?;
+
         let stage = parse_growth_stage(save.pet.stage.as_deref())?;
         let evolution = parse_evolution_kind(save.pet.evolution.as_deref())?;
         let mut pet = Pet::new(
@@ -302,6 +315,7 @@ impl TryFrom<SaveData> for GameState {
             care_stats,
             daily_report,
             login,
+            expedition,
         })
     }
 }
@@ -314,6 +328,8 @@ impl From<&ReportEvent> for SaveReportEvent {
                 ReportEventKind::Login => "login",
                 ReportEventKind::Feed => "feed",
                 ReportEventKind::Play => "play",
+                ReportEventKind::ExpeditionStarted => "expedition_started",
+                ReportEventKind::ExpeditionCompleted => "expedition_completed",
             }
             .to_string(),
         }
@@ -350,12 +366,43 @@ impl TryFrom<SaveReportEvent> for ReportEvent {
             "login" => ReportEventKind::Login,
             "feed" => ReportEventKind::Feed,
             "play" => ReportEventKind::Play,
+            "expedition_started" => ReportEventKind::ExpeditionStarted,
+            "expedition_completed" => ReportEventKind::ExpeditionCompleted,
             _ => return Err(ApplicationError::InvalidSaveData),
         };
 
         Ok(Self {
             timestamp: event.timestamp,
             kind,
+        })
+    }
+}
+
+impl From<Expedition> for SaveExpedition {
+    fn from(expedition: Expedition) -> Self {
+        Self {
+            expedition_type: expedition.expedition_type.as_str().to_string(),
+            started_at: expedition.started_at,
+            returns_at: expedition.returns_at,
+            seed: expedition.seed,
+        }
+    }
+}
+
+impl TryFrom<SaveExpedition> for Expedition {
+    type Error = ApplicationError;
+
+    fn try_from(expedition: SaveExpedition) -> Result<Self, Self::Error> {
+        let expedition_type = match expedition.expedition_type.as_str() {
+            "Explore" => ExpeditionType::Explore,
+            _ => return Err(ApplicationError::InvalidSaveData),
+        };
+
+        Ok(Self {
+            expedition_type,
+            started_at: expedition.started_at,
+            returns_at: expedition.returns_at,
+            seed: expedition.seed,
         })
     }
 }

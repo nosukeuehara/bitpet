@@ -41,6 +41,7 @@ mod tests {
             care_stats: CareStats::new(),
             daily_report: DailyReport::new(0),
             login: LoginState::new(),
+            expedition: None,
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -60,6 +61,7 @@ mod tests {
             care_stats: CareStats::new(),
             daily_report: DailyReport::new(0),
             login: LoginState::new(),
+            expedition: None,
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -79,6 +81,7 @@ mod tests {
             care_stats: CareStats::new(),
             daily_report: DailyReport::new(0),
             login: LoginState::new(),
+            expedition: None,
         };
 
         apply_elapsed_time(&mut state, 10_800);
@@ -97,6 +100,7 @@ mod tests {
             care_stats: CareStats::new(),
             daily_report: DailyReport::new(0),
             login: LoginState::new(),
+            expedition: None,
         };
 
         apply_elapsed_time(&mut state, 360_000);
@@ -115,6 +119,7 @@ mod tests {
             care_stats: CareStats::new(),
             daily_report: DailyReport::new(0),
             login: LoginState::new(),
+            expedition: None,
         };
 
         apply_elapsed_time(&mut state, 9_000);

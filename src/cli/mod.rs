@@ -37,6 +37,7 @@ where
             Err(ApplicationError::ActionLimitReached(action)) => {
                 renderer::render_action_limit_reached(action)
             }
+            Err(ApplicationError::PetAway) => renderer::render_pet_away(),
             Err(error) => return Err(error.into()),
         },
         Command::Play => match service.play() {
@@ -44,9 +45,15 @@ where
             Err(ApplicationError::ActionLimitReached(action)) => {
                 renderer::render_action_limit_reached(action)
             }
+            Err(ApplicationError::PetAway) => renderer::render_pet_away(),
             Err(error) => return Err(error.into()),
         },
-        Command::Go => renderer::render_not_implemented("go"),
+        Command::Go => match service.start_expedition() {
+            Ok(outcome) => renderer::render_expedition_started(&outcome),
+            Err(ApplicationError::ExpeditionLocked) => renderer::render_expedition_locked(),
+            Err(ApplicationError::PetAway) => renderer::render_pet_away(),
+            Err(error) => return Err(error.into()),
+        },
         Command::Report => renderer::render_report(&service.report()?),
         Command::Streak => renderer::render_streak(&service.streak()?),
         Command::Version => env!("CARGO_PKG_VERSION").to_string(),

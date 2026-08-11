@@ -139,6 +139,7 @@ fn saved_state(hunger: u8, energy: u8, last_updated_at: u64) -> GameState {
         care_stats: CareStats::new(),
         daily_report: DailyReport::new(last_updated_at / 86_400),
         login: LoginState::new(),
+        expedition: None,
     }
 }
 

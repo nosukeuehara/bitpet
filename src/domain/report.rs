@@ -55,6 +55,28 @@ impl DailyReport {
             kind: ReportEventKind::Play,
         });
     }
+
+    pub fn record_expedition_started(&mut self, timestamp: Timestamp) {
+        self.adventure_count = self.adventure_count.saturating_add(1);
+        self.events.push(ReportEvent {
+            timestamp,
+            kind: ReportEventKind::ExpeditionStarted,
+        });
+    }
+
+    pub fn record_expedition_completed(
+        &mut self,
+        timestamp: Timestamp,
+        experience_gained: u32,
+        mood_delta: i32,
+    ) {
+        self.experience_gained = self.experience_gained.saturating_add(experience_gained);
+        self.mood_delta = self.mood_delta.saturating_add(mood_delta);
+        self.events.push(ReportEvent {
+            timestamp,
+            kind: ReportEventKind::ExpeditionCompleted,
+        });
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,6 +90,8 @@ pub enum ReportEventKind {
     Login,
     Feed,
     Play,
+    ExpeditionStarted,
+    ExpeditionCompleted,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
