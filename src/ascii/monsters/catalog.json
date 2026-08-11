@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "note": "Content catalog for design/tooling. Domain evolution rules are not implemented by this file.",
+  "families": {
+    "fuzz": {
+      "name": "Fuzz Family",
+      "concept": "毛量と丸みが増えていく、BitPetの王道もふもふ系。",
+      "legacy": "Fluffy",
+      "tree": "Mofflet -> Fuzzard -> Brumruff / Woolram",
+      "final_hint": "Care寄りでBrumruff、Activity寄りでWoolram。"
+    },
+    "wing": {
+      "name": "Wing Family",
+      "concept": "翼や大きな横幅へ成長する、外出・探索に似合う飛行系。",
+      "legacy": "Sharp",
+      "tree": "Flitter -> Fuzzwing -> Grandwing / Mantara",
+      "final_hint": "Adventure寄りでGrandwing、Balanced寄りでMantara。"
+    },
+    "drift": {
+      "name": "Drift Family",
+      "concept": "身体が軽くなり、雲や浮遊生物のようになる漂遊系。",
+      "legacy": "Weird",
+      "tree": "Bloblet -> Floatle -> Cloudruff / Driftle",
+      "final_hint": "Gentle/Rest寄りでCloudruff、Adventure寄りでDriftle。"
+    },
+    "spike": {
+      "name": "Spike Family",
+      "concept": "角・突起・嘴など輪郭が鋭く発達していく系統。",
+      "legacy": "Sharp",
+      "tree": "Spindle -> Pricklet -> Starwing / Beakruff",
+      "final_hint": "Brave寄りでStarwing、Care寄りでBeakruff。"
+    },
+    "colony": {
+      "name": "Colony Family",
+      "concept": "分裂・双子化・多頭化によって個体数が増えていく系統。",
+      "legacy": "Weird",
+      "tree": "Buddle -> Twindle -> Tribble / Cerbloop",
+      "final_hint": "Play/Social寄りでTribble、Battle/Brave寄りでCerbloop。"
+    },
+    "flora": {
+      "name": "Flora Family",
+      "concept": "芽・根・植物のようなパーツが育つ穏やかな系統。",
+      "legacy": "Fluffy",
+      "tree": "Spriglet -> Dewbud -> Bloomuff / Rainroot",
+      "final_hint": "Care寄りでBloomuff、Rest/Low-activity寄りでRainroot。"
+    },
+    "oddling": {
+      "name": "Oddling Family",
+      "concept": "既存の生物分類に収まりにくい、BitPetらしい謎生物系。",
+      "legacy": "Weird",
+      "tree": "Wormlet -> Whiskerp -> Crownruff / Manelet",
+      "final_hint": "特殊条件・同点・低頻度条件などの受け皿にする。"
+    }
+  },
+  "monsters": [
+    {
+      "src": 1,
+      "id": "mofflet",
+      "name": "Mofflet",
+      "family": "fuzz",
+      "stage": "stage1",
+      "branch": "Fuzzard"
+    },
+    {
+      "src": 23,
+      "id": "fuzzard",
+      "name": "Fuzzard",
+      "family": "fuzz",
+      "stage": "stage2",
+      "branch": "Brumruff / Woolram"
+    },
+    {
+      "src": 3,
+      "id": "brumruff",
+      "name": "Brumruff",
+      "family": "fuzz",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 8,
+      "id": "woolram",
+      "name": "Woolram",
+      "family": "fuzz",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 12,
+      "id": "flitter",
+      "name": "Flitter",
+      "family": "wing",
+      "stage": "stage1",
+      "branch": "Fuzzwing"
+    },
+    {
+      "src": 16,
+      "id": "fuzzwing",
+      "name": "Fuzzwing",
+      "family": "wing",
+      "stage": "stage2",
+      "branch": "Grandwing / Mantara"
+    },
+    {
+      "src": 10,
+      "id": "grandwing",
+      "name": "Grandwing",
+      "family": "wing",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 21,
+      "id": "mantara",
+      "name": "Mantara",
+      "family": "wing",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 2,
+      "id": "bloblet",
+      "name": "Bloblet",
+      "family": "drift",
+      "stage": "stage1",
+      "branch": "Floatle"
+    },
+    {
+      "src": 19,
+      "id": "floatle",
+      "name": "Floatle",
+      "family": "drift",
+      "stage": "stage2",
+      "branch": "Cloudruff / Driftle"
+    },
+    {
+      "src": 9,
+      "id": "cloudruff",
+      "name": "Cloudruff",
+      "family": "drift",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 27,
+      "id": "driftle",
+      "name": "Driftle",
+      "family": "drift",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 5,
+      "id": "spindle",
+      "name": "Spindle",
+      "family": "spike",
+      "stage": "stage1",
+      "branch": "Pricklet"
+    },
+    {
+      "src": 22,
+      "id": "pricklet",
+      "name": "Pricklet",
+      "family": "spike",
+      "stage": "stage2",
+      "branch": "Starwing / Beakruff"
+    },
+    {
+      "src": 26,
+      "id": "starwing",
+      "name": "Starwing",
+      "family": "spike",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 28,
+      "id": "beakruff",
+      "name": "Beakruff",
+      "family": "spike",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 14,
+      "id": "buddle",
+      "name": "Buddle",
+      "family": "colony",
+      "stage": "stage1",
+      "branch": "Twindle"
+    },
+    {
+      "src": 17,
+      "id": "twindle",
+      "name": "Twindle",
+      "family": "colony",
+      "stage": "stage2",
+      "branch": "Tribble / Cerbloop"
+    },
+    {
+      "src": 25,
+      "id": "tribble",
+      "name": "Tribble",
+      "family": "colony",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 15,
+      "id": "cerbloop",
+      "name": "Cerbloop",
+      "family": "colony",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 4,
+      "id": "spriglet",
+      "name": "Spriglet",
+      "family": "flora",
+      "stage": "stage1",
+      "branch": "Dewbud"
+    },
+    {
+      "src": 18,
+      "id": "dewbud",
+      "name": "Dewbud",
+      "family": "flora",
+      "stage": "stage2",
+      "branch": "Bloomuff / Rainroot"
+    },
+    {
+      "src": 7,
+      "id": "bloomuff",
+      "name": "Bloomuff",
+      "family": "flora",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 13,
+      "id": "rainroot",
+      "name": "Rainroot",
+      "family": "flora",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 24,
+      "id": "wormlet",
+      "name": "Wormlet",
+      "family": "oddling",
+      "stage": "stage1",
+      "branch": "Whiskerp"
+    },
+    {
+      "src": 20,
+      "id": "whiskerp",
+      "name": "Whiskerp",
+      "family": "oddling",
+      "stage": "stage2",
+      "branch": "Crownruff / Manelet"
+    },
+    {
+      "src": 11,
+      "id": "crownruff",
+      "name": "Crownruff",
+      "family": "oddling",
+      "stage": "final",
+      "branch": "-"
+    },
+    {
+      "src": 6,
+      "id": "manelet",
+      "name": "Manelet",
+      "family": "oddling",
+      "stage": "final",
+      "branch": "-"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+BitPet Monster Evolution Tree
+============================
+
+Baby (shared)
+
+├─ Fuzz Family  [legacy affinity: Fluffy]
+│  Mofflet -> Fuzzard -> Brumruff / Woolram
+│  Final hint: Care寄りでBrumruff、Activity寄りでWoolram。
+│
+├─ Wing Family  [legacy affinity: Sharp]
+│  Flitter -> Fuzzwing -> Grandwing / Mantara
+│  Final hint: Adventure寄りでGrandwing、Balanced寄りでMantara。
+│
+├─ Drift Family  [legacy affinity: Weird]
+│  Bloblet -> Floatle -> Cloudruff / Driftle
+│  Final hint: Gentle/Rest寄りでCloudruff、Adventure寄りでDriftle。
+│
+├─ Spike Family  [legacy affinity: Sharp]
+│  Spindle -> Pricklet -> Starwing / Beakruff
+│  Final hint: Brave寄りでStarwing、Care寄りでBeakruff。
+│
+├─ Colony Family  [legacy affinity: Weird]
+│  Buddle -> Twindle -> Tribble / Cerbloop
+│  Final hint: Play/Social寄りでTribble、Battle/Brave寄りでCerbloop。
+│
+├─ Flora Family  [legacy affinity: Fluffy]
+│  Spriglet -> Dewbud -> Bloomuff / Rainroot
+│  Final hint: Care寄りでBloomuff、Rest/Low-activity寄りでRainroot。
+│
+├─ Oddling Family  [legacy affinity: Weird]
+│  Wormlet -> Whiskerp -> Crownruff / Manelet
+│  Final hint: 特殊条件・同点・低頻度条件などの受け皿にする。

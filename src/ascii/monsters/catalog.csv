@@ -1,0 +1,29 @@
+id,name,family,stage,source_index,evolves_to
+mofflet,Mofflet,fuzz,stage1,1,Fuzzard
+fuzzard,Fuzzard,fuzz,stage2,23,Brumruff / Woolram
+brumruff,Brumruff,fuzz,final,3,-
+woolram,Woolram,fuzz,final,8,-
+flitter,Flitter,wing,stage1,12,Fuzzwing
+fuzzwing,Fuzzwing,wing,stage2,16,Grandwing / Mantara
+grandwing,Grandwing,wing,final,10,-
+mantara,Mantara,wing,final,21,-
+bloblet,Bloblet,drift,stage1,2,Floatle
+floatle,Floatle,drift,stage2,19,Cloudruff / Driftle
+cloudruff,Cloudruff,drift,final,9,-
+driftle,Driftle,drift,final,27,-
+spindle,Spindle,spike,stage1,5,Pricklet
+pricklet,Pricklet,spike,stage2,22,Starwing / Beakruff
+starwing,Starwing,spike,final,26,-
+beakruff,Beakruff,spike,final,28,-
+buddle,Buddle,colony,stage1,14,Twindle
+twindle,Twindle,colony,stage2,17,Tribble / Cerbloop
+tribble,Tribble,colony,final,25,-
+cerbloop,Cerbloop,colony,final,15,-
+spriglet,Spriglet,flora,stage1,4,Dewbud
+dewbud,Dewbud,flora,stage2,18,Bloomuff / Rainroot
+bloomuff,Bloomuff,flora,final,7,-
+rainroot,Rainroot,flora,final,13,-
+wormlet,Wormlet,oddling,stage1,24,Whiskerp
+whiskerp,Whiskerp,oddling,stage2,20,Crownruff / Manelet
+crownruff,Crownruff,oddling,final,11,-
+manelet,Manelet,oddling,final,6,-
