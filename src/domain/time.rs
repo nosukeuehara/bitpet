@@ -29,7 +29,7 @@ fn elapsed_amount(elapsed_seconds: Timestamp, amount_per_hour: Timestamp) -> u8 
 #[cfg(test)]
 mod tests {
     use super::apply_elapsed_time;
-    use crate::domain::{DailyActions, GameState, Pet};
+    use crate::domain::{CareStats, DailyActions, GameState, Pet};
 
     #[test]
     fn no_elapsed_time_keeps_status() {
@@ -38,6 +38,7 @@ mod tests {
             pet: Pet::new("Mochi".to_string(), 1, 0, 72, 72, 72),
             last_updated_at: 3_600,
             daily_actions: DailyActions::new(0),
+            care_stats: CareStats::new(),
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -54,6 +55,7 @@ mod tests {
             pet: Pet::new("Mochi".to_string(), 1, 0, 72, 72, 72),
             last_updated_at: 0,
             daily_actions: DailyActions::new(0),
+            care_stats: CareStats::new(),
         };
 
         apply_elapsed_time(&mut state, 3_600);
@@ -70,6 +72,7 @@ mod tests {
             pet: Pet::new("Mochi".to_string(), 1, 0, 72, 72, 72),
             last_updated_at: 0,
             daily_actions: DailyActions::new(0),
+            care_stats: CareStats::new(),
         };
 
         apply_elapsed_time(&mut state, 10_800);
@@ -85,6 +88,7 @@ mod tests {
             pet: Pet::new("Mochi".to_string(), 1, 0, 2, 72, 99),
             last_updated_at: 0,
             daily_actions: DailyActions::new(0),
+            care_stats: CareStats::new(),
         };
 
         apply_elapsed_time(&mut state, 360_000);
@@ -100,6 +104,7 @@ mod tests {
             pet: Pet::new("Mochi".to_string(), 1, 0, 72, 72, 72),
             last_updated_at: 10_000,
             daily_actions: DailyActions::new(0),
+            care_stats: CareStats::new(),
         };
 
         apply_elapsed_time(&mut state, 9_000);

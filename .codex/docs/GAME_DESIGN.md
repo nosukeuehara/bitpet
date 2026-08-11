@@ -328,6 +328,30 @@ MVPでは分岐数を少なくする。
 
 後から追加できるデータ構造とする。
 
+Phase 5 MVPでは以下を適用する。
+
+\`\`\`text
+experience 10ごとにlevel +1
+
+level 2到達時:
+  Baby -> Stage 1
+\`\`\`
+
+最初の進化先:
+
+\`\`\`text
+feed_total > play_total
+  Fluffy
+
+play_total > feed_total
+  Sharp
+
+feed_total == play_total
+  Weird
+\`\`\`
+
+Phase 5ではStage 2以降と複雑な進化ツリーは実装しない。
+
 **---**
 
 **# 14. お出かけ**

@@ -1,5 +1,5 @@
 use bitpet::application::{ApplicationError, GameService};
-use bitpet::domain::{DailyActions, GameState, Pet, SAVE_VERSION};
+use bitpet::domain::{CareStats, DailyActions, GameState, Pet, SAVE_VERSION};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -117,6 +117,10 @@ fn saved_state(
             day: last_updated_at / 86_400,
             feed_count,
             play_count: 0,
+        },
+        care_stats: CareStats {
+            feed_total: feed_count,
+            play_total: 0,
         },
     }
 }

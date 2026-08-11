@@ -255,6 +255,10 @@ save
 
 を組み立てる。
 
+Phase 5では、level計算、growth stage更新、evolution判定もDomain層で扱う。
+
+CLIはDomainの状態を表示に変換し、ASCII Artの選択はCLI表示側で行う。
+
 **---**
 
 **# 34. Wasm対応方針**

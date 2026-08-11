@@ -1,4 +1,4 @@
-use crate::ascii::pets::DEFAULT_PET;
+use crate::ascii::pets::pet_art;
 use crate::domain::action::{Action, ActionOutcome};
 use crate::domain::GameState;
 
@@ -6,8 +6,15 @@ pub fn render_status(state: &GameState) -> String {
     let pet = &state.pet;
 
     format!(
-        "{DEFAULT_PET}\n\n{}\nLv. {}\n\nMood     : {}%\nHunger   : {}%\nEnergy   : {}%",
-        pet.name, pet.level, pet.status.mood, pet.status.hunger, pet.status.energy
+        "{}\n\n{}\n{}\nLv. {}\n\nStage    : {}\nMood     : {}%\nHunger   : {}%\nEnergy   : {}%",
+        pet_art(pet),
+        pet.name,
+        pet.evolution.as_str(),
+        pet.level,
+        pet.stage.as_str(),
+        pet.status.mood,
+        pet.status.hunger,
+        pet.status.energy
     )
 }
 

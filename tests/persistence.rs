@@ -1,5 +1,5 @@
 use bitpet::application::{ApplicationError, GameService};
-use bitpet::domain::{DailyActions, GameState, Pet, SAVE_VERSION};
+use bitpet::domain::{CareStats, DailyActions, GameState, Pet, SAVE_VERSION};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -31,9 +31,12 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 3"#));
+    assert!(contents.contains(r#""version": 4"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""daily_actions""#));
+    assert!(contents.contains(r#""care_stats""#));
+    assert!(contents.contains(r#""stage": "Baby""#));
+    assert!(contents.contains(r#""evolution": "Baby""#));
     assert!(contents.contains(r#""name": "Mochi""#));
 
     cleanup(save_dir);
@@ -48,6 +51,7 @@ fn loads_saved_game() {
         pet: Pet::new("Mochi".to_string(), 1, 0, 68, 77, 88),
         last_updated_at: 3_600,
         daily_actions: DailyActions::new(0),
+        care_stats: CareStats::new(),
     };
 
     repository.save(&state).expect("game should be saved");
@@ -67,6 +71,7 @@ fn save_then_load_keeps_pet_main_state() {
         pet: Pet::new("Mochi".to_string(), 3, 24, 72, 81, 64),
         last_updated_at: 7_200,
         daily_actions: DailyActions::new(0),
+        care_stats: CareStats::new(),
     };
 
     repository.save(&state).expect("game should be saved");
@@ -111,6 +116,8 @@ fn migrates_phase2_save_without_last_updated_at_without_panic() {
     assert_eq!(state.pet.status.hunger, 72);
     assert_eq!(state.last_updated_at, 9_000);
     assert_eq!(state.daily_actions.day, 0);
+    assert_eq!(state.care_stats.feed_total, 0);
+    assert_eq!(state.care_stats.play_total, 0);
 
     cleanup(save_dir);
 }
@@ -146,6 +153,8 @@ fn migrates_phase3_save_without_daily_actions_without_panic() {
     assert_eq!(state.daily_actions.day, 0);
     assert_eq!(state.daily_actions.feed_count, 0);
     assert_eq!(state.daily_actions.play_count, 0);
+    assert_eq!(state.care_stats.feed_total, 0);
+    assert_eq!(state.care_stats.play_total, 0);
 
     cleanup(save_dir);
 }

@@ -1,5 +1,5 @@
 use bitpet::application::GameService;
-use bitpet::domain::{DailyActions, GameState, Pet, SAVE_VERSION};
+use bitpet::domain::{CareStats, DailyActions, GameState, Pet, SAVE_VERSION};
 use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
@@ -134,6 +134,7 @@ fn saved_state(hunger: u8, energy: u8, last_updated_at: u64) -> GameState {
         pet: Pet::new("Mochi".to_string(), 1, 0, hunger, 72, energy),
         last_updated_at,
         daily_actions: DailyActions::new(last_updated_at / 86_400),
+        care_stats: CareStats::new(),
     }
 }
 

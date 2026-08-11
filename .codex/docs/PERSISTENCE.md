@@ -40,15 +40,21 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 3,
+  "version": 4,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
     "feed_count": 1,
     "play_count": 0
   },
+  "care_stats": {
+    "feed_total": 4,
+    "play_total": 2
+  },
   "pet": {
     "name": "Mochi",
+    "stage": "Stage 1",
+    "evolution": "Fluffy",
     "level": 3,
     "experience": 24,
     "hunger": 72,
@@ -75,6 +81,10 @@ Phase 3では、`version: 1` の既存saveに `last_updated_at` が存在しな�
 `daily_actions.day` はUnix epoch日数で保存する。
 
 Phase 4では、`version: 1` または `version: 2` の既存saveに `daily_actions` が存在しない場合、読み込み時に現在日で初期化して `version: 3` として保存し直す。
+
+`care_stats` は進化判定に使う累計行動数を保存する。
+
+Phase 5では、`version: 1` から `version: 3` の既存saveに `care_stats` や `pet.stage` / `pet.evolution` が存在しない場合、読み込み時に補完して `version: 4` として保存し直す。
 
 **---**
 

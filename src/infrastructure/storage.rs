@@ -1,5 +1,6 @@
 use crate::application::{ApplicationError, ApplicationResult};
-use crate::domain::{DailyActions, GameState, Pet, Timestamp, SAVE_VERSION};
+use crate::domain::evolution::{EvolutionKind, GrowthStage};
+use crate::domain::{CareStats, DailyActions, GameState, Pet, Timestamp, SAVE_VERSION};
 use crate::infrastructure::filesystem;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -122,6 +123,7 @@ struct SaveData {
     version: u32,
     last_updated_at: Option<Timestamp>,
     daily_actions: Option<SaveDailyActions>,
+    care_stats: Option<SaveCareStats>,
     pet: SavePet,
 }
 
@@ -133,8 +135,16 @@ struct SaveDailyActions {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+struct SaveCareStats {
+    feed_total: u32,
+    play_total: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 struct SavePet {
     name: String,
+    stage: Option<String>,
+    evolution: Option<String>,
     level: u32,
     experience: u32,
     hunger: u8,
@@ -152,8 +162,14 @@ impl From<&GameState> for SaveData {
                 feed_count: state.daily_actions.feed_count,
                 play_count: state.daily_actions.play_count,
             }),
+            care_stats: Some(SaveCareStats {
+                feed_total: state.care_stats.feed_total,
+                play_total: state.care_stats.play_total,
+            }),
             pet: SavePet {
                 name: state.pet.name.clone(),
+                stage: Some(state.pet.stage.as_str().to_string()),
+                evolution: Some(state.pet.evolution.as_str().to_string()),
                 level: state.pet.level,
                 experience: state.pet.experience,
                 hunger: state.pet.status.hunger,
@@ -180,6 +196,10 @@ impl TryFrom<SaveData> for GameState {
             return Err(ApplicationError::InvalidSaveData);
         }
 
+        if save.version == SAVE_VERSION && save.care_stats.is_none() {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
         let daily_actions = save.daily_actions.map_or_else(
             || DailyActions::new(0),
             |actions| DailyActions {
@@ -189,18 +209,50 @@ impl TryFrom<SaveData> for GameState {
             },
         );
 
+        let care_stats = save
+            .care_stats
+            .map_or_else(CareStats::new, |stats| CareStats {
+                feed_total: stats.feed_total,
+                play_total: stats.play_total,
+            });
+
+        let stage = parse_growth_stage(save.pet.stage.as_deref())?;
+        let evolution = parse_evolution_kind(save.pet.evolution.as_deref())?;
+        let mut pet = Pet::new(
+            save.pet.name,
+            save.pet.level,
+            save.pet.experience,
+            save.pet.hunger,
+            save.pet.mood,
+            save.pet.energy,
+        );
+        pet.stage = stage;
+        pet.evolution = evolution;
+
         Ok(Self {
             version: save.version,
-            pet: Pet::new(
-                save.pet.name,
-                save.pet.level,
-                save.pet.experience,
-                save.pet.hunger,
-                save.pet.mood,
-                save.pet.energy,
-            ),
+            pet,
             last_updated_at: save.last_updated_at.unwrap_or(0),
             daily_actions,
+            care_stats,
         })
+    }
+}
+
+fn parse_growth_stage(value: Option<&str>) -> ApplicationResult<GrowthStage> {
+    match value {
+        None | Some("Baby") => Ok(GrowthStage::Baby),
+        Some("Stage 1") => Ok(GrowthStage::Stage1),
+        Some(_) => Err(ApplicationError::InvalidSaveData),
+    }
+}
+
+fn parse_evolution_kind(value: Option<&str>) -> ApplicationResult<EvolutionKind> {
+    match value {
+        None | Some("Baby") => Ok(EvolutionKind::Baby),
+        Some("Fluffy") => Ok(EvolutionKind::Fluffy),
+        Some("Sharp") => Ok(EvolutionKind::Sharp),
+        Some("Weird") => Ok(EvolutionKind::Weird),
+        Some(_) => Err(ApplicationError::InvalidSaveData),
     }
 }

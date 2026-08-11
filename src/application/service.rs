@@ -83,6 +83,10 @@ where
         if loaded_version < SAVE_VERSION {
             state.version = SAVE_VERSION;
             state.daily_actions = crate::domain::DailyActions::new(day);
+            if loaded_version < 4 {
+                state.care_stats = crate::domain::CareStats::new();
+                state.pet.update_growth(state.care_stats);
+            }
         } else {
             state.daily_actions.reset_if_new_day(day);
         }
