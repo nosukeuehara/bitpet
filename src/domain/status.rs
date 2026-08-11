@@ -14,3 +14,10 @@ impl Default for Status {
         }
     }
 }
+
+impl Status {
+    pub fn apply_elapsed(&mut self, hunger_decay: u8, energy_recovery: u8) {
+        self.hunger = self.hunger.saturating_sub(hunger_decay);
+        self.energy = self.energy.saturating_add(energy_recovery).min(100);
+    }
+}

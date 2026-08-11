@@ -155,13 +155,15 @@ trait RandomSource
 
 現在時刻取得もdomain内部から直接呼ばない。
 
-理想:
+現在の構成:
 
 \`\`\`rust
 trait Clock {
     fn now(&self) -> Timestamp;
 }
 \`\`\`
+
+`Timestamp` はUnix epoch秒として扱う。
 
 本番:
 
@@ -176,6 +178,16 @@ FixedClock
 \`\`\`
 
 これにより時間経過テストを安定して実装できる。
+
+Application層が `Clock` を使って現在時刻を取得し、Domain層には `Timestamp` を渡す。
+
+Domain層はシステム時計を直接参照しない。
+
+例:
+
+\`\`\`rust
+fn apply_elapsed_time(state: &mut GameState, now: Timestamp)
+\`\`\`
 
 **---**
 

@@ -40,7 +40,8 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 1,
+  "version": 2,
+  "last_updated_at": 1760000000,
   "pet": {
     "name": "Mochi",
     "level": 3,
@@ -61,6 +62,10 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 を持たせる。
 
 将来のマイグレーション用。
+
+`last_updated_at` はUnix epoch秒で保存する。
+
+Phase 3では、`version: 1` の既存saveに `last_updated_at` が存在しない場合、読み込み時に現在時刻を設定して `version: 2` として保存し直す。
 
 **---**
 

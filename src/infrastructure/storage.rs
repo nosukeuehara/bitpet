@@ -1,5 +1,5 @@
 use crate::application::{ApplicationError, ApplicationResult};
-use crate::domain::{GameState, Pet, SAVE_VERSION};
+use crate::domain::{GameState, Pet, Timestamp, SAVE_VERSION};
 use crate::infrastructure::filesystem;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -120,6 +120,7 @@ fn storage_serde_error(error: serde_json::Error) -> ApplicationError {
 #[derive(Debug, Serialize, Deserialize)]
 struct SaveData {
     version: u32,
+    last_updated_at: Option<Timestamp>,
     pet: SavePet,
 }
 
@@ -137,6 +138,7 @@ impl From<&GameState> for SaveData {
     fn from(state: &GameState) -> Self {
         Self {
             version: state.version,
+            last_updated_at: Some(state.last_updated_at),
             pet: SavePet {
                 name: state.pet.name.clone(),
                 level: state.pet.level,
@@ -153,7 +155,11 @@ impl TryFrom<SaveData> for GameState {
     type Error = ApplicationError;
 
     fn try_from(save: SaveData) -> Result<Self, Self::Error> {
-        if save.version != SAVE_VERSION {
+        if !matches!(save.version, 1 | SAVE_VERSION) {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
+        if save.version == SAVE_VERSION && save.last_updated_at.is_none() {
             return Err(ApplicationError::InvalidSaveData);
         }
 
@@ -167,6 +173,7 @@ impl TryFrom<SaveData> for GameState {
                 save.pet.mood,
                 save.pet.energy,
             ),
+            last_updated_at: save.last_updated_at.unwrap_or(0),
         })
     }
 }

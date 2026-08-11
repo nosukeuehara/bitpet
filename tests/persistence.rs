@@ -1,5 +1,6 @@
 use bitpet::application::{ApplicationError, GameService};
 use bitpet::domain::{GameState, Pet};
+use bitpet::infrastructure::clock::FixedClock;
 use bitpet::infrastructure::storage::{FileRepository, GameRepository};
 use std::fs;
 use std::path::PathBuf;
@@ -8,11 +9,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[test]
 fn creates_new_game_when_save_data_does_not_exist() {
     let save_dir = test_save_dir("creates_new_game_when_save_data_does_not_exist");
-    let mut service = GameService::new(FileRepository::new(save_dir.clone()));
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(3_600),
+    );
 
     let state = service.status().expect("new game should be created");
 
-    assert_eq!(state, GameState::default());
+    assert_eq!(state, GameState::new(3_600));
     assert!(save_dir.join("save.json").is_file());
 
     cleanup(save_dir);
@@ -27,7 +31,8 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 1"#));
+    assert!(contents.contains(r#""version": 2"#));
+    assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""name": "Mochi""#));
 
     cleanup(save_dir);
@@ -38,8 +43,9 @@ fn loads_saved_game() {
     let save_dir = test_save_dir("loads_saved_game");
     let mut repository = FileRepository::new(save_dir.clone());
     let state = GameState {
-        version: 1,
+        version: 2,
         pet: Pet::new("Mochi".to_string(), 1, 0, 68, 77, 88),
+        last_updated_at: 3_600,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -55,8 +61,9 @@ fn save_then_load_keeps_pet_main_state() {
     let save_dir = test_save_dir("save_then_load_keeps_pet_main_state");
     let mut repository = FileRepository::new(save_dir.clone());
     let state = GameState {
-        version: 1,
+        version: 2,
         pet: Pet::new("Mochi".to_string(), 3, 24, 72, 81, 64),
+        last_updated_at: 7_200,
     };
 
     repository.save(&state).expect("game should be saved");
@@ -66,6 +73,40 @@ fn save_then_load_keeps_pet_main_state() {
     assert_eq!(loaded.pet.level, state.pet.level);
     assert_eq!(loaded.pet.experience, state.pet.experience);
     assert_eq!(loaded.pet.status, state.pet.status);
+    assert_eq!(loaded.last_updated_at, state.last_updated_at);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn migrates_phase2_save_without_last_updated_at_without_panic() {
+    let save_dir = test_save_dir("migrates_phase2_save_without_last_updated_at_without_panic");
+    fs::create_dir_all(&save_dir).expect("save directory should be created");
+    fs::write(
+        save_dir.join("save.json"),
+        r#"{
+  "version": 1,
+  "pet": {
+    "name": "Mochi",
+    "level": 1,
+    "experience": 0,
+    "hunger": 72,
+    "mood": 72,
+    "energy": 72
+  }
+}"#,
+    )
+    .expect("phase 2 save should be written");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let state = service.status().expect("old save should be migrated");
+
+    assert_eq!(state.version, 2);
+    assert_eq!(state.pet.status.hunger, 72);
+    assert_eq!(state.last_updated_at, 9_000);
 
     cleanup(save_dir);
 }
