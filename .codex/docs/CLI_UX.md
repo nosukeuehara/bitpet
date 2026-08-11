@@ -51,6 +51,18 @@ bitpet status
 
 \`bitpet\` 単体も同じ動作としてよい。
 
+Egg状態の例:
+
+\`\`\`text
+   __
+ /    \
+ \____/
+
+Egg
+
+Hatching in 1h 0m
+\`\`\`
+
 **---**
 
 **### feed**
@@ -70,6 +82,8 @@ mood +
 
 1日の利用回数には上限を設定する。
 
+Egg中は実行できない。
+
 **---**
 
 **### play**
@@ -88,6 +102,8 @@ energy -
 experience +
 \`\`\`
 
+Egg中は実行できない。
+
 **---**
 
 **### go**
@@ -101,6 +117,8 @@ bitpet go
 成長後にアンロックされる。
 
 外出中は一部アクションを使用できない。
+
+Egg中は実行できない。
 
 例:
 
@@ -179,6 +197,12 @@ Family
 Growth Stage
 Level
 \`\`\`
+
+Egg状態ではSpecies / Family / Level / status値を前面に出さず、Egg表示と孵化までの残り時間を簡潔に表示する。
+
+帰還予定やDaily Report event時刻はユーザーのlocal timeで表示する。
+
+save dataにはlocal time文字列を保存しない。
 
 表示サイズは小さめを基本とする。
 

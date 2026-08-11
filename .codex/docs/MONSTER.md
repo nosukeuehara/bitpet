@@ -270,57 +270,40 @@ Final species
 
 ```text
 GrowthStage:
+  Egg
   Baby
   Stage1
+  Stage2
+  Final
 
-EvolutionKind:
-  Baby
-  Fluffy
-  Sharp
-  Weird
+MonsterFamily:
+  Fuzz
+  Wing
+  Drift
+  Spike
+  Colony
+  Flora
+  Oddling
+
+SpeciesId:
+  baby
+  28 Stage 1以降のSpecies ID
 ```
 
 である。
 
-今回のコンテンツ追加だけでこの enum を即時置換しない。
-次の進化システム実装で以下を検討する。
+save compatibility のため、`SpeciesId` のserde表現は安定したsnake_case ID (`"mofflet"`) とする。
 
-```rust
-enum GrowthStage {
-    Baby,
-    Stage1,
-    Stage2,
-    Final,
-}
-
-enum MonsterFamily {
-    Fuzz,
-    Wing,
-    Drift,
-    Spike,
-    Colony,
-    Flora,
-    Oddling,
-}
-
-enum SpeciesId {
-    Mofflet,
-    // ...
-}
-```
-
-ただし長期的には save compatibility のため、`SpeciesId` の serde 表現は
-安定した snake_case ID (`"mofflet"`) とすることを推奨する。
-
-### Placeholder migration concept
+### Legacy evolution migration
 
 ```text
-Fluffy -> Fuzz / Flora
-Sharp  -> Wing / Spike
-Weird  -> Drift / Colony / Oddling
+Baby   -> baby
+Fluffy -> mofflet
+Sharp  -> spindle
+Weird  -> wormlet
 ```
 
-既存セーブをどの Species へ移行するかは save schema version を上げるタイミングで確定する。
+EggはSpeciesそのものではない。Egg中のsaveでは `pet.stage = "Egg"` と `pet.species_id = "baby"` を保持し、孵化後に共通Babyへ移る。
 
 ---
 

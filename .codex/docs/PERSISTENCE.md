@@ -40,7 +40,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
 
 \`\`\`json
 {
-  "version": 7,
+  "version": 8,
   "last_updated_at": 1760000000,
   "daily_actions": {
     "day": 20370,
@@ -83,6 +83,7 @@ Rustでは可能ならOS標準のconfig/data directory取得ライブラリを�
     "returns_at": 1760003600,
     "seed": 1760000000
   },
+  "hatching": null,
   "pet": {
     "name": "Mochi",
     "stage": "Stage 2",
@@ -148,6 +149,106 @@ Weird  -> wormlet
 \`\`\`text
 .codex/docs/MONSTER.md
 \`\`\`
+
+v0.1.0 と v0.1.1 の保存schemaは同じ `version: 6` とする。
+
+v0.1.1 は配布workflow修正のみで、save.json の構造差分はない。
+
+読み込み時は、古いsaveを current schema へ直接deserializeしない。
+
+以下の順番を必須とする。
+
+\`\`\`text
+raw JSON
+↓
+version 判定
+↓
+version 1..=7: legacy/current-before-egg save schema へdeserialize
+version 8: current save schema へdeserialize
+↓
+GameState へ変換
+↓
+service layer migration / elapsed time / login / expedition completion
+↓
+current schema で保存
+\`\`\`
+
+`version: 1` から `version: 6` の legacy schema では、当時存在しないfieldをmigration用に決定的defaultで補完してよい。
+
+現在の補完ルール:
+
+\`\`\`text
+last_updated_at missing -> 0 として読み込み、version 1 はservice layerで現在時刻へ更新
+daily_actions missing  -> day 0 / feed_count 0 / play_count 0
+care_stats missing     -> feed_total 0 / play_total 0
+daily_report missing   -> DailyReport::new(0)
+daily_report.events missing -> []
+login missing          -> LoginState::new()
+login.streak missing   -> 0
+expedition missing     -> None
+pet.stage missing      -> Baby
+pet.species_id missing -> legacy pet.evolution から決定的に変換
+pet.evolution missing  -> Baby
+\`\`\`
+
+`version: 8` は current schema として扱い、`last_updated_at` / `daily_actions` / `care_stats` / `daily_report` / `login` / `pet.stage` / `pet.species_id` を必須とする。`pet.stage: "Egg"` の場合のみ `hatching` も必須とする。
+
+未知の `version`、壊れたJSON、未知の `species_id`、未知の legacy `evolution`、不正な `expedition` は migration 不能として読み込みエラーを返す。
+
+migration不能なsaveを削除したり、新規ゲームとして上書きしてはいけない。
+
+Phase 9では、新規ゲームをEggから開始するため `version: 8` として `hatching` を追加する。
+
+```json
+"hatching": {
+  "egg_created_at": 1760000000,
+  "hatches_at": 1760003600
+}
+```
+
+Eggでは `pet.stage` を `"Egg"`、`pet.species_id` を `"baby"` として保存する。
+
+EggはSpeciesそのものではないため、`hatching` がEgg固有状態を保持し、孵化後は `hatching: null` かつ `pet.stage: "Baby"` へ移る。
+
+`hatching.hatches_at` は `egg_created_at + 3600` 秒とする。
+
+`version: 1` から `version: 7` の既存saveは、読み込み後に `hatching = None` として扱う。既存ユーザーをEggへ戻してはいけない。
+
+時刻の責務:
+
+```text
+Domain / Persistence:
+  UTC / Unix timestamp seconds
+  absolute duration calculation
+
+Application / Clock:
+  current Unix timestamp
+  local calendar day index
+
+CLI presentation:
+  user's local timezone for clock display
+```
+
+absolute timeとして扱うもの:
+
+```text
+last_updated_at
+egg_created_at
+hatches_at
+expedition.started_at
+expedition.returns_at
+daily_report event timestamp
+```
+
+local calendar dayとして扱うもの:
+
+```text
+daily_actions.day
+daily_report.day
+login.last_login_day
+```
+
+`+9 hours` のような固定timezone補正は禁止する。NativeではOSのlocal timezoneからlocal calendar dayを求める。Wasmでは呼び出し側がlocal offsetを渡せるAPIを使用できる。
 
 **---**
 

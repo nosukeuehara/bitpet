@@ -125,7 +125,11 @@ src/domain/monster.rs
   Legacy evolution mapping
 
 src/domain/evolution.rs
-  GrowthStage
+  GrowthStage (Egg / Baby / Stage1 / Stage2 / Final)
+
+src/domain/hatching.rs
+  HatchingState
+  deterministic hatch boundary
 
 src/domain/pet.rs
   Pet state
@@ -205,6 +209,12 @@ trait Clock {
 \`\`\`
 
 `Timestamp` はUnix epoch秒として扱う。
+
+絶対時刻はDomain / PersistenceでUTC Unix timestampとして扱う。
+
+daily action reset / daily report / login streak の日付判定は、Application層が `Clock` から取得したlocal calendar dayをDomainへ渡す。
+
+CLI表示ではlocal timeへ変換するが、save dataへlocal datetime文字列は保存しない。
 
 本番:
 
