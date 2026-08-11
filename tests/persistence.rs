@@ -204,6 +204,89 @@ fn migrates_v0_1_x_fixtures_to_v0_2_0_and_roundtrips() {
 }
 
 #[test]
+fn migrates_version8_save_without_pending_evolution() {
+    let fixture = r#"{
+  "version": 8,
+  "last_updated_at": 9000,
+  "daily_actions": {
+    "day": 0,
+    "feed_count": 3,
+    "play_count": 3
+  },
+  "care_stats": {
+    "feed_total": 3,
+    "play_total": 3
+  },
+  "daily_report": {
+    "day": 0,
+    "feed_count": 3,
+    "play_count": 3,
+    "adventure_count": 1,
+    "experience_gained": 15,
+    "mood_delta": 45,
+    "events": [
+      {
+        "timestamp": 8800,
+        "kind": "login"
+      },
+      {
+        "timestamp": 8900,
+        "kind": "expedition_started"
+      }
+    ]
+  },
+  "login": {
+    "last_login_day": 0,
+    "streak": 1
+  },
+  "expedition": {
+    "expedition_type": "Explore",
+    "started_at": 8900,
+    "returns_at": 12500,
+    "seed": 8900
+  },
+  "hatching": null,
+  "pet": {
+    "name": "Mochi",
+    "stage": "Stage 1",
+    "species_id": "mofflet",
+    "level": 2,
+    "experience": 15,
+    "hunger": 100,
+    "mood": 100,
+    "energy": 32
+  }
+}"#;
+    let state = state_from_json(fixture).expect("version 8 save should load before migration");
+
+    assert_eq!(state.version, 8);
+    assert_eq!(state.pet.species_id, SpeciesId::Mofflet);
+    assert!(state.pending_evolution.is_none());
+    assert!(state.expedition.is_some());
+
+    let save_dir = test_save_dir("migrates_version8_save_without_pending_evolution");
+    fs::create_dir_all(&save_dir).expect("save directory should be created");
+    fs::write(save_dir.join("save.json"), fixture).expect("version 8 save should be written");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let migrated = service.status().expect("version 8 save should migrate");
+    let saved_json =
+        fs::read_to_string(save_dir.join("save.json")).expect("migrated save should exist");
+
+    assert_eq!(migrated.version, SAVE_VERSION);
+    assert_eq!(migrated.pet.species_id, SpeciesId::Mofflet);
+    assert!(migrated.pending_evolution.is_none());
+    assert!(migrated.expedition.is_some());
+    assert!(saved_json.contains(r#""version": 9"#));
+    assert!(saved_json.contains(r#""pending_evolution": null"#));
+
+    cleanup(save_dir);
+}
+
+#[test]
 fn legacy_report_without_event_history_reaches_migration() {
     let state = state_from_json(
         r#"{

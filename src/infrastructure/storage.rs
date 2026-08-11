@@ -400,7 +400,7 @@ impl TryFrom<LegacySaveData> for GameState {
     type Error = ApplicationError;
 
     fn try_from(save: LegacySaveData) -> Result<Self, Self::Error> {
-        if !matches!(save.version, 1..=7) {
+        if !matches!(save.version, 1..=8) {
             return Err(ApplicationError::InvalidSaveData);
         }
 
