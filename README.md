@@ -2,7 +2,7 @@
 
 BitPet は Rust で実装する小さな CLI 育成ゲームです。
 
-現在の実装は、Egg から始まるゲーム開始・復元ループ、起動していない間の時間経過反映、孵化、`feed` / `play` による世話、レベルアップ、Monster Domain による Stage 1 / Stage 2 / Final 進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しい Egg を作成して `save.json` に保存し、2 回目以降は保存済みの状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
+v1.0.0 は、Egg から始まるゲーム開始・復元ループ、起動していない間の時間経過反映、孵化、`feed` / `play` による世話、レベルアップ、Monster Domain による Stage 1 / Stage 2 / Final 進化、日次レポート、連続ログイン日数、お出かけまで対応しています。`bitpet` コマンドとしてビルド・起動でき、初回起動時に新しい Egg を作成して `save.json` に保存し、2 回目以降は保存済みの状態を読み込んで表示します。Native CLI のリリース workflow と Wasm build adapter も用意しています。
 
 ## コンセプト
 
@@ -173,14 +173,14 @@ Login streak
 
 GitHub Release が公開されている場合は、自分の OS / CPU に合う archive をダウンロードして `bitpet` を実行します。
 
-想定される配布ファイル:
+v1.0.0 の配布ファイル:
 
-- `bitpet-vX.Y.Z-aarch64-apple-darwin.tar.gz`
-- `bitpet-vX.Y.Z-x86_64-apple-darwin.tar.gz`
-- `bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`
-- `bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip`
-
-v0.1.0 の場合は `vX.Y.Z` を `v0.1.0` に読み替えてください。
+| Platform | Download |
+|---|---|
+| macOS Apple Silicon (M1 / M2 / M3 / M4 and newer) | `bitpet-v1.0.0-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `bitpet-v1.0.0-x86_64-apple-darwin.tar.gz` |
+| Windows 64-bit | `bitpet-v1.0.0-x86_64-pc-windows-msvc.zip` |
+| Linux 64-bit Intel / AMD | `bitpet-v1.0.0-x86_64-unknown-linux-gnu.tar.gz` |
 
 対応 OS / target:
 
@@ -189,18 +189,24 @@ v0.1.0 の場合は `vX.Y.Z` を `v0.1.0` に読み替えてください。
 - Linux x86_64: `x86_64-unknown-linux-gnu`
 - Windows x86_64: `x86_64-pc-windows-msvc`
 
+Mac の種類が分からない場合は Apple menu -> About This Mac を確認してください。Apple M1 / M2 / M3 / M4 と表示される場合は Apple Silicon 版、Intel と表示される場合は Intel Mac 版を使用します。Apple Silicon 版と Intel Mac 版は別のAssetです。
+
+`.sha256` で終わるファイルはダウンロード検証用のchecksumです。BitPetをインストールして遊ぶだけなら必須ではありません。GitHubが自動生成する `Source code (zip)` / `Source code (tar.gz)` は開発者向けで、通常のユーザー向けバイナリではありません。
+
 macOS / Linux:
 
 ```bash
-tar -xzf bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
-./bitpet-vX.Y.Z-x86_64-unknown-linux-gnu/bitpet
+tar -xzf <downloaded-file>.tar.gz
+cd <extracted-directory>
+./bitpet
 ```
 
 Windows:
 
 ```powershell
-Expand-Archive bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip
-.\bitpet-vX.Y.Z-x86_64-pc-windows-msvc\bitpet.exe
+Expand-Archive <downloaded-file>.zip
+cd <extracted-directory>
+.\bitpet.exe
 ```
 
 ローカルでビルドする場合:
@@ -284,7 +290,7 @@ BitPet は DB を使わず、ローカルファイルへ保存します。
 
 macOS / Linux では `~/.bitpet/save.json`、Windows では `%APPDATA%\BitPet\save.json` を使用します。保存形式には将来のマイグレーション用に `version` を持たせ、時間経過計算用に `last_updated_at`、行動回数制限用に `daily_actions`、進化判定用に `care_stats`、日次記録用に `daily_report` と `login`、お出かけ状態用に `expedition`、Egg の孵化状態用に `hatching`、Monster の安定IDとして `pet.species_id` を保存しています。
 
-古い save version は起動時に現在の形式へ移行します。壊れた `save.json` は panic せず、読み込みエラーとして表示します。
+v0.1.x を含む古い save version は起動時に現在の形式へ移行します。既存のペットを新規Eggへ戻したり、保存データを置き換えたりしません。壊れた `save.json` は panic せず、読み込みエラーとして表示します。
 
 時間経過、孵化、お出かけ帰還は Unix timestamp による絶対時刻で扱います。日次レポート、連続ログイン、行動回数リセットはユーザーの local calendar day で判定します。
 
