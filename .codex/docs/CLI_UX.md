@@ -71,6 +71,7 @@ Commands:
   go        Send your BitPet on an expedition
   report    Show today's activity report
   streak    Show your login streak
+  update    Update BitPet
   help      Show help for a command
 
 Options:
@@ -242,6 +243,56 @@ bitpet -V
 \`\`\`
 
 package versionを表示する。
+
+**---**
+
+**### update**
+
+\`\`\`bash
+bitpet update --check
+bitpet update
+\`\`\`
+
+Native CLI版の更新確認と自己更新を行う。
+
+`bitpet update --check` は現在versionとGitHub Releases上の最新stable releaseだけを比較し、ファイルを変更しない。
+
+更新がある場合:
+
+\`\`\`text
+Current: v1.0.0
+Latest : v1.1.0
+
+Update available.
+Run `bitpet update` to install.
+\`\`\`
+
+最新版の場合:
+
+\`\`\`text
+BitPet is already up to date.
+v1.1.0
+\`\`\`
+
+`bitpet update` はGitHub Releasesから現在のOS / CPUに対応するNative archiveと `.sha256` を取得し、checksum検証後に現在のexecutableを置き換える。
+
+表示は小さく簡潔にする。
+
+\`\`\`text
+Updating BitPet...
+
+v1.0.0 -> v1.1.0
+
+Downloading...
+Verifying...
+Installing...
+
+BitPet updated successfully.
+\`\`\`
+
+`update` はGameStateやsave dataに触れない。`~/.bitpet/save.json` のmigrationは通常起動時のPersistence layerへ任せる。
+
+Wasm版にはself-updateを実装しない。
 
 **---**
 
