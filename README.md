@@ -140,7 +140,7 @@ GitHub Release が公開されている場合は、自分の OS / CPU に合う 
 - `bitpet-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz`
 - `bitpet-vX.Y.Z-x86_64-pc-windows-msvc.zip`
 
-v0.1.0 の場合は `vX.Y.Z` を `v0.1.0` に読み替えてください。
+v0.1.1 の場合は `vX.Y.Z` を `v0.1.1` に読み替えてください。
 
 対応 OS / target:
 

@@ -1,8 +1,13 @@
-# BitPet v0.1.0
+# BitPet v0.1.1
 
 BitPet is a small Rust CLI digital pet for quick terminal check-ins during work.
 It does not run a background process. Instead, it updates the pet state from
 saved timestamps whenever you run the command.
+
+## Fixes
+
+- Updated the Native Release workflow to use a currently supported Intel macOS runner.
+- Updated GitHub Actions used by CI, Wasm, and Native Release workflows to Node.js 24-compatible versions.
 
 ## Highlights
 
@@ -48,7 +53,7 @@ reported as a user-facing read error instead of panicking.
 
 ## WebAssembly
 
-The `wasm` feature builds a WebAssembly adapter. v0.1.0 does not include a Web
+The `wasm` feature builds a WebAssembly adapter. v0.1.1 does not include a Web
 UI. Web apps can use the generated Wasm package and store the returned save JSON
 in browser storage such as `localStorage` or IndexedDB.
 
