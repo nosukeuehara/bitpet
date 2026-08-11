@@ -1,9 +1,13 @@
 use bitpet::application::{ApplicationError, GameService};
+use bitpet::domain::evolution::GrowthStage;
+use bitpet::domain::monster::SpeciesId;
 use bitpet::domain::{
     CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
 };
 use bitpet::infrastructure::clock::FixedClock;
-use bitpet::infrastructure::storage::{FileRepository, GameRepository};
+use bitpet::infrastructure::storage::{
+    state_from_json, state_to_json, FileRepository, GameRepository,
+};
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -37,7 +41,7 @@ fn saves_new_game() {
     repository.save(&state).expect("game should be saved");
 
     let contents = fs::read_to_string(save_dir.join("save.json")).expect("save file should exist");
-    assert!(contents.contains(r#""version": 6"#));
+    assert!(contents.contains(r#""version": 7"#));
     assert!(contents.contains(r#""last_updated_at": 0"#));
     assert!(contents.contains(r#""daily_actions""#));
     assert!(contents.contains(r#""care_stats""#));
@@ -45,7 +49,8 @@ fn saves_new_game() {
     assert!(contents.contains(r#""login""#));
     assert!(contents.contains(r#""expedition": null"#));
     assert!(contents.contains(r#""stage": "Baby""#));
-    assert!(contents.contains(r#""evolution": "Baby""#));
+    assert!(contents.contains(r#""species_id": "baby""#));
+    assert!(!contents.contains(r#""evolution""#));
     assert!(contents.contains(r#""name": "Mochi""#));
 
     cleanup(save_dir);
@@ -99,6 +104,45 @@ fn save_then_load_keeps_pet_main_state() {
     assert_eq!(loaded.last_updated_at, state.last_updated_at);
 
     cleanup(save_dir);
+}
+
+#[test]
+fn species_id_survives_save_load_roundtrip() {
+    let save_dir = test_save_dir("species_id_survives_save_load_roundtrip");
+    let mut repository = FileRepository::new(save_dir.clone());
+    let mut state = GameState {
+        version: SAVE_VERSION,
+        pet: Pet::new("Mochi".to_string(), 4, 30, 72, 81, 64),
+        last_updated_at: 7_200,
+        daily_actions: DailyActions::new(0),
+        care_stats: CareStats::new(),
+        daily_report: DailyReport::new(0),
+        login: LoginState::new(),
+        expedition: None,
+    };
+    state.pet.stage = GrowthStage::Final;
+    state.pet.species_id = SpeciesId::Starwing;
+
+    repository.save(&state).expect("game should be saved");
+    let loaded = repository.load().expect("game should be loaded");
+
+    assert_eq!(loaded.pet.stage, GrowthStage::Final);
+    assert_eq!(loaded.pet.species_id, SpeciesId::Starwing);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn wasm_compatible_json_roundtrip_preserves_species_id() {
+    let mut state = GameState::default();
+    state.pet.stage = GrowthStage::Stage2;
+    state.pet.species_id = SpeciesId::Fuzzard;
+
+    let json = state_to_json(&state).expect("state should serialize");
+    let loaded = state_from_json(&json).expect("state should deserialize");
+
+    assert_eq!(loaded.pet.stage, GrowthStage::Stage2);
+    assert_eq!(loaded.pet.species_id, SpeciesId::Fuzzard);
 }
 
 #[test]
@@ -237,6 +281,56 @@ fn migrates_phase6_save_without_expedition_without_panic() {
 }
 
 #[test]
+fn migrates_legacy_fluffy_evolution_to_mofflet_species() {
+    let save_dir = test_save_dir("migrates_legacy_fluffy_evolution_to_mofflet_species");
+    write_legacy_stage1_save(&save_dir, "Fluffy");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let state = service.status().expect("legacy save should migrate");
+
+    assert_eq!(state.version, SAVE_VERSION);
+    assert_eq!(state.pet.stage, GrowthStage::Stage1);
+    assert_eq!(state.pet.species_id, SpeciesId::Mofflet);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn migrates_legacy_sharp_evolution_to_spindle_species() {
+    let save_dir = test_save_dir("migrates_legacy_sharp_evolution_to_spindle_species");
+    write_legacy_stage1_save(&save_dir, "Sharp");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let state = service.status().expect("legacy save should migrate");
+
+    assert_eq!(state.pet.species_id, SpeciesId::Spindle);
+
+    cleanup(save_dir);
+}
+
+#[test]
+fn migrates_legacy_weird_evolution_to_wormlet_species() {
+    let save_dir = test_save_dir("migrates_legacy_weird_evolution_to_wormlet_species");
+    write_legacy_stage1_save(&save_dir, "Weird");
+    let mut service = GameService::with_clock(
+        FileRepository::new(save_dir.clone()),
+        FixedClock::new(9_000),
+    );
+
+    let state = service.status().expect("legacy save should migrate");
+
+    assert_eq!(state.pet.species_id, SpeciesId::Wormlet);
+
+    cleanup(save_dir);
+}
+
+#[test]
 fn invalid_expedition_timestamp_returns_error_without_panic() {
     let save_dir = test_save_dir("invalid_expedition_timestamp_returns_error_without_panic");
     fs::create_dir_all(&save_dir).expect("save directory should be created");
@@ -331,6 +425,53 @@ fn test_save_dir(test_name: &str) -> PathBuf {
         .expect("system time should be after unix epoch")
         .as_nanos();
     std::env::temp_dir().join(format!("bitpet-{test_name}-{unique}"))
+}
+
+fn write_legacy_stage1_save(save_dir: &PathBuf, evolution: &str) {
+    fs::create_dir_all(save_dir).expect("save directory should be created");
+    fs::write(
+        save_dir.join("save.json"),
+        format!(
+            r#"{{
+  "version": 6,
+  "last_updated_at": 9000,
+  "daily_actions": {{
+    "day": 0,
+    "feed_count": 0,
+    "play_count": 0
+  }},
+  "care_stats": {{
+    "feed_total": 0,
+    "play_total": 0
+  }},
+  "daily_report": {{
+    "day": 0,
+    "feed_count": 0,
+    "play_count": 0,
+    "adventure_count": 0,
+    "experience_gained": 0,
+    "mood_delta": 0,
+    "events": []
+  }},
+  "login": {{
+    "last_login_day": null,
+    "streak": 0
+  }},
+  "expedition": null,
+  "pet": {{
+    "name": "Mochi",
+    "stage": "Stage 1",
+    "evolution": "{evolution}",
+    "level": 2,
+    "experience": 10,
+    "hunger": 72,
+    "mood": 72,
+    "energy": 72
+  }}
+}}"#
+        ),
+    )
+    .expect("legacy save should be written");
 }
 
 fn cleanup(save_dir: PathBuf) {

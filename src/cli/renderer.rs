@@ -15,13 +15,15 @@ pub fn render_status(state: &GameState) -> String {
     }
 
     let pet = &state.pet;
+    let family = pet.family().map_or("-", |family| family.as_str());
 
     format!(
-        "{}\n\n{}\n{}\nLv. {}\n\nStage    : {}\nMood     : {}%\nHunger   : {}%\nEnergy   : {}%",
+        "{}\n\n{}\n{}\nLv. {}\n\nFamily   : {}\nStage    : {}\nMood     : {}%\nHunger   : {}%\nEnergy   : {}%",
         pet_art(pet),
         pet.name,
-        pet.evolution.as_str(),
+        pet.species_name(),
         pet.level,
+        family,
         pet.stage.as_str(),
         pet.status.mood,
         pet.status.hunger,

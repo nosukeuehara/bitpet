@@ -1,6 +1,7 @@
 pub mod action;
 pub mod evolution;
 pub mod expedition;
+pub mod monster;
 pub mod pet;
 pub mod report;
 pub mod status;
@@ -8,12 +9,13 @@ pub mod time;
 
 pub use action::{CareStats, DailyActions};
 pub use expedition::Expedition;
+pub use monster::{MonsterFamily, SpeciesId};
 pub use pet::Pet;
 pub use report::{DailyReport, LoginState};
 
 pub type Timestamp = u64;
 
-pub const SAVE_VERSION: u32 = 6;
+pub const SAVE_VERSION: u32 = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameState {

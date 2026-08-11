@@ -1,6 +1,7 @@
 use bitpet::application::{ApplicationError, GameService};
-use bitpet::domain::evolution::{EvolutionKind, GrowthStage};
+use bitpet::domain::evolution::GrowthStage;
 use bitpet::domain::expedition::ExpeditionType;
+use bitpet::domain::monster::SpeciesId;
 use bitpet::domain::{
     CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, SAVE_VERSION,
 };
@@ -123,9 +124,9 @@ fn completed_expedition_applies_reward_and_clears_away_state() {
 fn saved_state(last_updated_at: u64, stage: GrowthStage) -> GameState {
     let mut pet = Pet::new("Mochi".to_string(), 1, 0, 72, 72, 72);
     pet.stage = stage;
-    pet.evolution = match stage {
-        GrowthStage::Baby => EvolutionKind::Baby,
-        GrowthStage::Stage1 => EvolutionKind::Fluffy,
+    pet.species_id = match stage {
+        GrowthStage::Baby => SpeciesId::Baby,
+        GrowthStage::Stage1 | GrowthStage::Stage2 | GrowthStage::Final => SpeciesId::Mofflet,
     };
 
     GameState {

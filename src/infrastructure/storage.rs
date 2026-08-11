@@ -1,6 +1,7 @@
 use crate::application::{ApplicationError, ApplicationResult};
-use crate::domain::evolution::{EvolutionKind, GrowthStage};
+use crate::domain::evolution::GrowthStage;
 use crate::domain::expedition::{Expedition, ExpeditionType};
+use crate::domain::monster::{legacy_evolution_species, species_from_str, SpeciesId};
 use crate::domain::report::{ReportEvent, ReportEventKind};
 use crate::domain::{
     CareStats, DailyActions, DailyReport, GameState, LoginState, Pet, Timestamp, SAVE_VERSION,
@@ -190,6 +191,8 @@ struct SaveExpedition {
 struct SavePet {
     name: String,
     stage: Option<String>,
+    species_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     evolution: Option<String>,
     level: u32,
     experience: u32,
@@ -234,7 +237,8 @@ impl From<&GameState> for SaveData {
             pet: SavePet {
                 name: state.pet.name.clone(),
                 stage: Some(state.pet.stage.as_str().to_string()),
-                evolution: Some(state.pet.evolution.as_str().to_string()),
+                species_id: Some(state.pet.species_id.as_str().to_string()),
+                evolution: None,
                 level: state.pet.level,
                 experience: state.pet.experience,
                 hunger: state.pet.status.hunger,
@@ -273,6 +277,14 @@ impl TryFrom<SaveData> for GameState {
             return Err(ApplicationError::InvalidSaveData);
         }
 
+        if save.version == SAVE_VERSION && save.pet.stage.is_none() {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
+        if save.version == SAVE_VERSION && save.pet.species_id.is_none() {
+            return Err(ApplicationError::InvalidSaveData);
+        }
+
         let daily_actions = save.daily_actions.map_or_else(
             || DailyActions::new(0),
             |actions| DailyActions {
@@ -303,7 +315,10 @@ impl TryFrom<SaveData> for GameState {
         let expedition = save.expedition.map(TryInto::try_into).transpose()?;
 
         let stage = parse_growth_stage(save.pet.stage.as_deref())?;
-        let evolution = parse_evolution_kind(save.pet.evolution.as_deref())?;
+        let species_id = parse_species_id(
+            save.pet.species_id.as_deref(),
+            save.pet.evolution.as_deref(),
+        )?;
         let mut pet = Pet::new(
             save.pet.name,
             save.pet.level,
@@ -313,7 +328,7 @@ impl TryFrom<SaveData> for GameState {
             save.pet.energy,
         );
         pet.stage = stage;
-        pet.evolution = evolution;
+        pet.species_id = species_id;
 
         Ok(Self {
             version: save.version,
@@ -423,16 +438,19 @@ fn parse_growth_stage(value: Option<&str>) -> ApplicationResult<GrowthStage> {
     match value {
         None | Some("Baby") => Ok(GrowthStage::Baby),
         Some("Stage 1") => Ok(GrowthStage::Stage1),
+        Some("Stage 2") => Ok(GrowthStage::Stage2),
+        Some("Final") => Ok(GrowthStage::Final),
         Some(_) => Err(ApplicationError::InvalidSaveData),
     }
 }
 
-fn parse_evolution_kind(value: Option<&str>) -> ApplicationResult<EvolutionKind> {
-    match value {
-        None | Some("Baby") => Ok(EvolutionKind::Baby),
-        Some("Fluffy") => Ok(EvolutionKind::Fluffy),
-        Some("Sharp") => Ok(EvolutionKind::Sharp),
-        Some("Weird") => Ok(EvolutionKind::Weird),
-        Some(_) => Err(ApplicationError::InvalidSaveData),
+fn parse_species_id(
+    species_id: Option<&str>,
+    legacy_evolution: Option<&str>,
+) -> ApplicationResult<SpeciesId> {
+    if let Some(species_id) = species_id {
+        return species_from_str(species_id).ok_or(ApplicationError::InvalidSaveData);
     }
+
+    legacy_evolution_species(legacy_evolution).ok_or(ApplicationError::InvalidSaveData)
 }

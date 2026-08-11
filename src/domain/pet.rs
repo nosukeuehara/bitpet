@@ -1,12 +1,13 @@
 use super::action::{level_from_experience, CareStats};
-use super::evolution::{EvolutionKind, GrowthStage};
+use super::evolution::GrowthStage;
+use super::monster::{definition, next_species, MonsterFamily, SpeciesId};
 use super::status::Status;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pet {
     pub name: String,
     pub stage: GrowthStage,
-    pub evolution: EvolutionKind,
+    pub species_id: SpeciesId,
     pub level: u32,
     pub experience: u32,
     pub status: Status,
@@ -24,7 +25,7 @@ impl Pet {
         Self {
             name,
             stage: GrowthStage::Baby,
-            evolution: EvolutionKind::Baby,
+            species_id: SpeciesId::Baby,
             level,
             experience,
             status: Status {
@@ -37,18 +38,34 @@ impl Pet {
 
     pub fn update_growth(&mut self, care_stats: CareStats) {
         self.level = level_from_experience(self.experience);
+
         if self.level >= 2 && self.stage == GrowthStage::Baby {
-            self.stage = GrowthStage::Stage1;
-            self.evolution = choose_stage1_evolution(care_stats);
+            self.evolve(care_stats);
+        }
+
+        if self.level >= 3 && self.stage == GrowthStage::Stage1 {
+            self.evolve(care_stats);
+        }
+
+        if self.level >= 4 && self.stage == GrowthStage::Stage2 {
+            self.evolve(care_stats);
         }
     }
-}
 
-fn choose_stage1_evolution(care_stats: CareStats) -> EvolutionKind {
-    match care_stats.feed_total.cmp(&care_stats.play_total) {
-        std::cmp::Ordering::Greater => EvolutionKind::Fluffy,
-        std::cmp::Ordering::Less => EvolutionKind::Sharp,
-        std::cmp::Ordering::Equal => EvolutionKind::Weird,
+    pub fn family(&self) -> Option<MonsterFamily> {
+        definition(self.species_id).map(|monster| monster.family)
+    }
+
+    pub fn species_name(&self) -> &'static str {
+        self.species_id.display_name()
+    }
+
+    fn evolve(&mut self, care_stats: CareStats) {
+        if let Some(species_id) = next_species(self.species_id, care_stats) {
+            self.species_id = species_id;
+            self.stage =
+                definition(species_id).map_or(GrowthStage::Baby, |monster| monster.growth_stage);
+        }
     }
 }
 
@@ -57,7 +74,7 @@ impl Default for Pet {
         Self {
             name: "Mochi".to_string(),
             stage: GrowthStage::Baby,
-            evolution: EvolutionKind::Baby,
+            species_id: SpeciesId::Baby,
             level: 1,
             experience: 0,
             status: Status::default(),
