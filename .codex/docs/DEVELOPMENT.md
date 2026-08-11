@@ -1090,15 +1090,16 @@ Homebrew
 
 **# 71. Self Update**
 
-将来的に、
+v1.1.0以降のNative CLIでは、
 
 \`\`\`bash
 bitpet update
+bitpet update --check
 \`\`\`
 
-のような自己更新機能を提供してもよい。
+による自己更新を提供する。
 
-その場合、
+構成:
 
 \`\`\`text
 GitHub Releases API
@@ -1114,9 +1115,24 @@ checksum検証
 binary更新
 \`\`\`
 
-という構成を検討する。
+通常ユーザー向けの自動更新対象はstable releaseのみとする。
 
-ただしMVPには含めない。
+\`\`\`text
+v1.2.0-beta.1
+v1.2.0-rc.1
+\`\`\`
+
+のようなprereleaseへは通常の `bitpet update` で更新しない。
+
+Release asset名は `.github/workflows/release.yml` のNative Release workflowをsource of truthとし、実装側はtarget suffixとarchive種別から対応assetを解決する。
+
+更新時はarchive本体と対応する `.sha256` を取得し、SHA-256検証が成功した場合だけ展開・インストールへ進む。
+
+download、checksum、archive extraction、binary replacement、version validationのいずれかが失敗しても、既存の正常なBitPet binaryを壊さないことを最優先する。
+
+`~/.bitpet/save.json` を含むgame saveには触れない。update後のsave migrationは通常起動時のPersistence layerへ任せる。
+
+Wasm版にはself-updateを含めない。Native-only dependencyはfeature/cfgで分離する。
 
 package manager経由で導入されたBitPetについては、原則としてpackage manager側のupdate機構を利用する。
 

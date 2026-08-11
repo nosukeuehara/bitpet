@@ -41,9 +41,23 @@ Domain
 Storage / Time / Random
 \`\`\`
 
+Native CLIのself-updateはゲームループとは別系統のinfrastructure機能として扱う。
+
+\`\`\`text
+CLI update command
+ ↓
+Infrastructure self_update
+ ↓
+GitHub Releases / filesystem / platform detection
+\`\`\`
+
+`self_update` は `GameState`、Monster Domain、Persistence migrationへ依存しない。save dataは通常のPersistence layerだけが扱う。
+
 Domain層は可能な限りPure Rustで実装する。
 
 将来的なWasm版でもDomain層を再利用できる状態を維持する。
+
+Wasm buildではNative self-updateをfeature/cfgで分離し、GitHub API、archive extraction、current executable replacementを含めない。
 
 **---**
 
@@ -83,7 +97,8 @@ bitpet/
 │   │   ├── mod.rs
 │   │   ├── storage.rs
 │   │   ├── filesystem.rs
-│   │   └── random.rs
+│   │   ├── random.rs
+│   │   └── self_update.rs
 │   │
 │   └── ascii/
 │       ├── mod.rs

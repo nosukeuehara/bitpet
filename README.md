@@ -33,6 +33,7 @@ BitPet は、仕事や作業の合間にターミナルから短時間だけ様�
 - Species ID に応じた ASCII Art 切り替え
 - `bitpet report` による当日の行動レポート表示
 - `bitpet streak` による連続ログイン日数表示
+- `bitpet update --check` / `bitpet update` によるNative CLIの自己更新
 - 起動日をログイン日として記録
 - `bitpet go` による Explore お出かけ
 - お出かけ中の状態保存と帰還時の結果反映
@@ -68,6 +69,8 @@ cargo build
 ./target/debug/bitpet go
 ./target/debug/bitpet report
 ./target/debug/bitpet streak
+./target/debug/bitpet update --check
+./target/debug/bitpet update
 ./target/debug/bitpet --help
 ./target/debug/bitpet --version
 ```
@@ -167,6 +170,18 @@ Login streak
 3 day(s)
 ```
 
+`update --check` はGitHub Releases上の最新stable版を確認し、更新があるかだけを表示します。ファイルは変更しません。
+
+```text
+Current: v1.0.0
+Latest : v1.1.0
+
+Update available.
+Run `bitpet update` to install.
+```
+
+`update` はNative CLI版をGitHub Releasesから更新します。現在のOS / CPUに合うarchiveと `.sha256` を取得し、checksum検証後に現在の `bitpet` executableを安全に置き換えます。`~/.bitpet/save.json` は変更しません。v1.1.0以降のStandalone版は、一度インストールすれば通常は次回以降 `bitpet update` で更新できます。
+
 現時点では未実装コマンドはありません。ただし、Explore 以外のお出かけ種類や Web UI などは今後の予定です。
 
 ## インストール方法
@@ -214,6 +229,15 @@ cargo build
 ```bash
 cargo install --path .
 ```
+
+GitHub Releaseから取得したStandalone版を更新する場合:
+
+```bash
+bitpet update --check
+bitpet update
+```
+
+`bitpet update` はNative CLI専用です。Wasm版やpackage manager経由で導入したBitPetでは、配布元の更新方法を使用してください。
 
 ## 開発環境のセットアップ
 
